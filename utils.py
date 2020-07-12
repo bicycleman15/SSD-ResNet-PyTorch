@@ -1,89 +1,146 @@
 import torch
-from math import sqrt
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-def xy_to_cxcy(xy):
+def point_form(boxes):
+    """ Convert prior_boxes to (xmin, ymin, xmax, ymax)
+    representation for comparison to point form ground truth data.
+    Args:
+        boxes: (tensor) center-size default boxes from priorbox layers.
+    Return:
+        boxes: (tensor) Converted xmin, ymin, xmax, ymax form of boxes.
     """
-    Convert bounding boxes from boundary coordinates (x_min, y_min, x_max, y_max) to center-size coordinates (c_x, c_y, w, h).
-    :param xy: bounding boxes in boundary coordinates, a tensor of size (n_boxes, 4)
-    :return: bounding boxes in center-size coordinates, a tensor of size (n_boxes, 4)
+    return torch.cat((boxes[:, :2] - boxes[:, 2:]/2,     # xmin, ymin
+                     boxes[:, :2] + boxes[:, 2:]/2), 1)  # xmax, ymax
+
+
+def center_size(boxes):
+    """ Convert prior_boxes to (cx, cy, w, h)
+    representation for comparison to center-size form ground truth data.
+    Args:
+        boxes: (tensor) point_form boxes
+    Return:
+        boxes: (tensor) Converted xmin, ymin, xmax, ymax form of boxes.
     """
-    return torch.cat([(xy[:, 2:] + xy[:, :2]) / 2,  # c_x, c_y
-                      xy[:, 2:] - xy[:, :2]], 1)  # w, h
+    return torch.cat((boxes[:, 2:] + boxes[:, :2])/2,  # cx, cy
+                     boxes[:, 2:] - boxes[:, :2], 1)  # w, h
 
-def cxcy_to_xy(cxcy):
+
+def intersect(box_a, box_b):
+    """ We resize both tensors to [A,B,2] without new malloc:
+    [A,2] -> [A,1,2] -> [A,B,2]
+    [B,2] -> [1,B,2] -> [A,B,2]
+    Then we compute the area of intersect between box_a and box_b.
+    Args:
+      box_a: (tensor) bounding boxes, Shape: [A,4].
+      box_b: (tensor) bounding boxes, Shape: [B,4].
+    Return:
+      (tensor) intersection area, Shape: [A,B].
     """
-    Convert bounding boxes from center-size coordinates (c_x, c_y, w, h) to boundary coordinates (x_min, y_min, x_max, y_max).
-    :param cxcy: bounding boxes in center-size coordinates, a tensor of size (n_boxes, 4)
-    :return: bounding boxes in boundary coordinates, a tensor of size (n_boxes, 4)
+    A = box_a.size(0)
+    B = box_b.size(0)
+    max_xy = torch.min(box_a[:, 2:].unsqueeze(1).expand(A, B, 2),
+                       box_b[:, 2:].unsqueeze(0).expand(A, B, 2))
+    min_xy = torch.max(box_a[:, :2].unsqueeze(1).expand(A, B, 2),
+                       box_b[:, :2].unsqueeze(0).expand(A, B, 2))
+    inter = torch.clamp((max_xy - min_xy), min=0)
+    return inter[:, :, 0] * inter[:, :, 1]
+
+
+def jaccard(box_a, box_b):
+    """Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
+    is simply the intersection over union of two boxes.  Here we operate on
+    ground truth boxes and default boxes.
+    E.g.:
+        A ∩ B / A ∪ B = A ∩ B / (area(A) + area(B) - A ∩ B)
+    Args:
+        box_a: (tensor) Ground truth bounding boxes, Shape: [num_objects,4]
+        box_b: (tensor) Prior boxes from priorbox layers, Shape: [num_priors,4]
+    Return:
+        jaccard overlap: (tensor) Shape: [box_a.size(0), box_b.size(0)]
     """
-    return torch.cat([cxcy[:, :2] - (cxcy[:, 2:] / 2),  # x_min, y_min
-                      cxcy[:, :2] + (cxcy[:, 2:] / 2)], 1)  # x_max, y_max
+    inter = intersect(box_a, box_b)
+    area_a = ((box_a[:, 2]-box_a[:, 0]) *
+              (box_a[:, 3]-box_a[:, 1])).unsqueeze(1).expand_as(inter)  # [A,B]
+    area_b = ((box_b[:, 2]-box_b[:, 0]) *
+              (box_b[:, 3]-box_b[:, 1])).unsqueeze(0).expand_as(inter)  # [A,B]
+    union = area_a + area_b - inter
+    return inter / union  # [A,B]
 
-def cxcy_to_gcxgcy(cxcy, priors_cxcy):
-    """
-    Encode bounding boxes (that are in center-size form) w.r.t. the corresponding prior boxes (that are in center-size form).
-    For the center coordinates, find the offset with respect to the prior box, and scale by the size of the prior box.
-    For the size coordinates, scale by the size of the prior box, and convert to the log-space.
-    In the model, we are predicting bounding box coordinates in this encoded form.
-    :param cxcy: bounding boxes in center-size coordinates, a tensor of size (n_priors, 4)
-    :param priors_cxcy: prior boxes with respect to which the encoding must be performed, a tensor of size (n_priors, 4)
-    :return: encoded bounding boxes, a tensor of size (n_priors, 4)
-    """
-
-    # The 10 and 5 below are referred to as 'variances' in the original Caffe repo, completely empirical
-    # They are for some sort of numerical conditioning, for 'scaling the localization gradient'
-    # See https://github.com/weiliu89/caffe/issues/155
-    return torch.cat([(cxcy[:, :2] - priors_cxcy[:, :2]) / (priors_cxcy[:, 2:] / 10),  # g_c_x, g_c_y
-                      torch.log(cxcy[:, 2:] / priors_cxcy[:, 2:]) * 5], 1)  # g_w, g_h
-
-
-def gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
-    """
-    Decode bounding box coordinates predicted by the model, since they are encoded in the form mentioned above.
-    They are decoded into center-size coordinates.
-    This is the inverse of the function above.
-    :param gcxgcy: encoded bounding boxes, i.e. output of the model, a tensor of size (n_priors, 4)
-    :param priors_cxcy: prior boxes with respect to which the encoding is defined, a tensor of size (n_priors, 4)
-    :return: decoded bounding boxes in center-size form, a tensor of size (n_priors, 4)
-    """
-
-    return torch.cat([gcxgcy[:, :2] * priors_cxcy[:, 2:] / 10 + priors_cxcy[:, :2],  # c_x, c_y
-                      torch.exp(gcxgcy[:, 2:] / 5) * priors_cxcy[:, 2:]], 1)  # w, h
-
-def find_intersection(set_1, set_2):
-    """
-    Find the intersection of every box combination between two sets of boxes that are in boundary coordinates.
-    :param set_1: set 1, a tensor of dimensions (n1, 4)
-    :param set_2: set 2, a tensor of dimensions (n2, 4)
-    :return: intersection of each of the boxes in set 1 with respect to each of the boxes in set 2, a tensor of dimensions (n1, n2)
-    """
-
-    # PyTorch auto-broadcasts singleton dimensions
-    lower_bounds = torch.max(set_1[:, :2].unsqueeze(1), set_2[:, :2].unsqueeze(0))  # (n1, n2, 2)
-    upper_bounds = torch.min(set_1[:, 2:].unsqueeze(1), set_2[:, 2:].unsqueeze(0))  # (n1, n2, 2)
-    intersection_dims = torch.clamp(upper_bounds - lower_bounds, min=0)  # (n1, n2, 2)
-    return intersection_dims[:, :, 0] * intersection_dims[:, :, 1]  # (n1, n2)
-
-
-def find_jaccard_overlap(set_1, set_2):
-    """
-    Find the Jaccard Overlap (IoU) of every box combination between two sets of boxes that are in boundary coordinates.
-    :param set_1: set 1, a tensor of dimensions (n1, 4)
-    :param set_2: set 2, a tensor of dimensions (n2, 4)
-    :return: Jaccard Overlap of each of the boxes in set 1 with respect to each of the boxes in set 2, a tensor of dimensions (n1, n2)
+def encode(matched, priors, variances):
+    """Encode the variances from the priorbox layers into the ground truth boxes
+    we have matched (based on jaccard overlap) with the prior boxes.
+    Args:
+        matched: (tensor) Coords of ground truth for each prior in point-form
+            Shape: [num_priors, 4].
+        priors: (tensor) Prior boxes in center-offset form
+            Shape: [num_priors,4].
+        variances: (list[float]) Variances of priorboxes
+    Return:
+        encoded boxes (tensor), Shape: [num_priors, 4]
     """
 
-    # Find intersections
-    intersection = find_intersection(set_1, set_2)  # (n1, n2)
+    # dist b/t match center and prior's center
+    g_cxcy = (matched[:, :2] + matched[:, 2:])/2 - priors[:, :2]
+    # encode variance
+    g_cxcy /= (variances[0] * priors[:, 2:])
+    # match wh / prior wh
+    g_wh = (matched[:, 2:] - matched[:, :2]) / priors[:, 2:]
+    g_wh = torch.log(g_wh) / variances[1]
+    # return target for smooth_l1_loss
+    return torch.cat([g_cxcy, g_wh], 1)  # [num_priors,4]
 
-    # Find areas of each box in both sets
-    areas_set_1 = (set_1[:, 2] - set_1[:, 0]) * (set_1[:, 3] - set_1[:, 1])  # (n1)
-    areas_set_2 = (set_2[:, 2] - set_2[:, 0]) * (set_2[:, 3] - set_2[:, 1])  # (n2)
+def match(threshold, boxes, priors, variances, labels):
+    """Match each prior box with the ground truth box of the highest jaccard
+    overlap, encode the bounding boxes, then return the matched indices
+    corresponding to both confidence and location preds.
+    Args:
+        threshold: (float) The overlap threshold used when mathing boxes.
+        boxes: (tensor) Ground truth boxes, Shape: [num_obj, num_priors].
+        priors: (tensor) Prior boxes from priorbox layers in center from coord, Shape: [n_priors,4].
+        variances: (tensor) Variances corresponding to each prior coord,
+            Shape: [num_priors, 4].
+        labels: (tensor) All the class labels for the image, Shape: [num_obj].
+        loc_t: (tensor) Tensor to be filled w/ endcoded location targets.
+        conf_t: (tensor) Tensor to be filled w/ matched indices for conf preds.
+        idx: (int) current batch index
+    Return:
+        The matched indices corresponding to 1)location and 2)confidence preds.
+    """
 
-    # Find the union
-    # PyTorch auto-broadcasts singleton dimensions
-    union = areas_set_1.unsqueeze(1) + areas_set_2.unsqueeze(0) - intersection  # (n1, n2)
+    # jaccard overlap
+    overlaps = jaccard(
+        boxes,
+        point_form(priors)
+    )
 
-    return intersection / union  # (n1, n2)
+    # Do Bipartite matching first
+
+    # best prior for each ground truth
+    best_prior_overlap, best_prior_idx = overlaps.max(dim=1)
+
+    # best ground truth for each prior
+    best_obj_overlap, best_obj_idx = overlaps.max(dim=0)
+
+    # ensure every box matches with its prior of max overlap
+    for j in range(best_prior_idx.size(0)):
+        best_obj_idx[best_prior_idx[j]] = j
+
+    # artificially increase best prior for each box to max in order to ensure it is selected, 
+    # This is done becuase there can be case when max overlap will be 0.2 but it is max. so we increase to 1.
+    best_obj_overlap[best_prior_idx] = 1.
+
+    matches = boxes[best_obj_idx]          # Shape: [num_priors,4]
+    conf = labels[best_obj_idx] + 1         # Shape: [num_priors], Adding 1 here so that 0 can be background class
+    conf[best_obj_overlap < threshold] = 0  # label as background
+    loc = encode(matches, priors, variances) # Note here, priors are in cneter coord, matches are in xy coord
+
+    return loc, conf # [num_priors,4] encoded offsets to learn, [num_priors] top class label for each prior
+
+def log_sum_exp(x):
+    """Utility function for computing log_sum_exp while determining
+    This will be used to determine unaveraged confidence loss across
+    all examples in a batch.
+    Args:
+        x (Variable(tensor)): conf_preds from conf layers
+    """
+    x_max, x_max_indices = torch.max(x, dim=1, keepdim=True)
+    return torch.log(torch.sum(torch.exp(x-x_max), 1, keepdim=True)) + x_max
