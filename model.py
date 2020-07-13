@@ -1,4 +1,4 @@
-# Implementing SSD 300--(Input image shape=[300,300,n]) where n is the number of channels
+# Implementing SSD 300--(Input image shape=[n,300,300]) where n is the number of channels
 
 # We are following NVIDIA's approach where in
 # --Using Resnet50 backbone
@@ -25,7 +25,7 @@ class ResNet(nn.Module):
         # importing the REsnet50s architecture. No weights or biases have been initialised.
         # WE will be using Xavier initialisation for that
         # Loading the full Resnet 50 backbone
-        backbone = resnet50(pretrained=False)
+        backbone = resnet50(pretrained=True)
 
         # Extracting the the required layers form the backbone
         # nn.sequential converts the individial components extracted from resnet in a list to
@@ -47,7 +47,7 @@ class ResNet(nn.Module):
     def forward(self, x):
         # provides a feature map in a forward pass
         x = self.feature_provider(x)
-        return x  # [38,38,1024]
+        return x  # [1024,38,38]
 
 
 class SSD300(nn.Module):
@@ -104,9 +104,9 @@ class SSD300(nn.Module):
     def _make_additional_features_maps(self, features_list, feature_channel_dict, intermediate_channel_dict):
 
         # input for additional layers come from one behinf it is coming from the
-        input_list = features_list[:-1],
+        input_list = features_list[:-1]
         # output is as stated for each additional layer
-        output_list = features_list[1:],
+        output_list = features_list[1:]
 
         self.additional_blocks = []
 
