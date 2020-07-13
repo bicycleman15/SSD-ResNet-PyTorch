@@ -91,8 +91,11 @@ class MultiBoxLoss(nn.Module):
         conf_loss_hard_neg = conf_loss_neg[hard_negatives]  # (sum(n_hard_negs))
 
         # As in the paper, averaged over positive priors only, although computed over both positive and hard-negative priors
-        conf_loss = (conf_loss_hard_neg.sum() + conf_loss_pos.sum()) / (n_pos.sum().float() + 1e-7)  # (), scalar
+        conf_loss = conf_loss_hard_neg.sum() + conf_loss_pos.sum()
+        N = (n_pos.sum().float() + 1e-7) 
 
-        # TOTAL LOSS
+        conf_loss /= N
+
+        # TOTAL LOSS  = L(x,c,l,g) = (Lconf(x, c) + α * Lloc(x,l,g)) / N
         return conf_loss + self.alpha * loc_loss
 
