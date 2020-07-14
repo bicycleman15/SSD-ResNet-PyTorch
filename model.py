@@ -172,7 +172,7 @@ class SSD300(nn.Module):
                         c(s).view(s.size(0), -1, self.label_num)))
 
         locs, confs = list(zip(*ret))
-        locs, confs = torch.cat(locs, 2).contiguous(), torch.cat(confs, 2).contiguous()
+        locs, confs = torch.cat(locs, 1).contiguous(), torch.cat(confs, 1).contiguous()
         return locs, confs
 
     def forward(self, x):
