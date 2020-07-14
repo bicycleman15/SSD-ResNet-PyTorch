@@ -169,7 +169,7 @@ class SSD300(nn.Module):
         ret = []
         for s, l, c in zip(src, loc, conf):
             ret.append((l(s).view(s.size(0), -1, 4),
-                        c(s).view(s.size(0), self.label_num, self.label_num)))
+                        c(s).view(s.size(0), -1, self.label_num)))
 
         locs, confs = list(zip(*ret))
         locs, confs = torch.cat(locs, 2).contiguous(
