@@ -73,9 +73,6 @@ class MultiBoxLoss(nn.Module):
         n_pos = pos_priors.sum(dim=1) # [num]
         n_hard_negs = self.negpos_ratio * n_pos
 
-        print(conf_preds.shape)
-        print(conf_t.shape)
-
         conf_loss_all = F.cross_entropy(conf_preds.view(-1, self.num_classes), conf_t.view(-1), reduction='none')
         
         conf_loss_all = conf_loss_all.view(num, num_priors)

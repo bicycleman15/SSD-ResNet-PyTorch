@@ -21,18 +21,29 @@ if torch.cuda.is_available():
 
 from dataset import COCODataset
 
-data = COCODataset('../val2017','../annotations/instances_val2017.json')
+data = COCODataset('../val2017','../annotations/instances_val2017.json',split='TRAIN')
 train_loader = torch.utils.data.DataLoader(data, batch_size=2, shuffle=True,
                                                collate_fn=data.collate_fn, num_workers=4)
 
-for imgs, bboxs, labels in train_loader:
-    print(imgs.shape)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.001)
+
+from tqdm import tqdm
+
+i = 0
+
+for imgs, bboxs, labels in (train_loader):
+
+    optimizer.zero_grad()
+
     imgs = imgs.cuda()
     locs, confs = model(imgs)
-    
-    print(locs.shape)
-    print(confs.shape)
 
     loss = criterion.forward(locs, confs, bboxs, labels)
-    print(loss)
-    break
+
+    loss.backward()
+    optimizer.step()
+
+    if i % 10 == 0:
+        print(loss.item())
+    
+    i += 1

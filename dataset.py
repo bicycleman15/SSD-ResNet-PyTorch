@@ -27,21 +27,23 @@ class COCODataset(Dataset):
         bboxs = [x['bbox'] for x in label]
 
         # bbox are stored as x,y,w,h
-        bboxs = np.array(bboxs).astype(float)
+        bboxs = np.array(bboxs)
 
         # convert to x1,y1,x2,y2 coordinate form aslo called as boundary form
         # this is done because the transforms are made in accordance to the boundary
         # coordinate
-        bboxs[:,2:] += bboxs[:,:2]
+        for bbox in bboxs:
+            bbox[2:] += bbox[:2]
 
-        bboxs = torch.from_numpy(bboxs)
+        bboxs = torch.from_numpy(bboxs).float()
 
 
         bbox_labels = [x['category_id']-1 for x in label]
         bbox_labels = torch.LongTensor(bbox_labels)
 
         # Applying augmentations
-        image, bboxs, labels=transform(img,bboxs,bbox_labels,split=self.split)
+        image, bboxs, labels = transform(img,bboxs,bbox_labels,split=self.split)
+        # bboxs = [bbox.float() for bbox in bboxs]
         return image, bboxs, labels
     
     def collate_fn(self, batch):
