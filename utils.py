@@ -157,7 +157,7 @@ def log_sum_exp(x):
 
 
 # Image augmentations (basic version)
-# TODO add advanced version of augmentations
+
 def expand(image, boxes, filler):
     """
     Perform a zooming out operation by placing the image in a larger canvas of filler material.
@@ -171,9 +171,12 @@ def expand(image, boxes, filler):
     original_h = image.size(1)
     original_w = image.size(2)
     max_scale = 4
+
+    # Generates a random scale between 1 and 4
     scale = random.uniform(1, max_scale)
     new_h = int(scale * original_h)
     new_w = int(scale * original_w)
+
     # Create such an image with the filler
     filler = torch.FloatTensor(filler)  # (3)
     new_image = torch.ones((3, new_h, new_w), dtype=torch.float) * filler.unsqueeze(1).unsqueeze(1)  # (3, new_h, new_w)
@@ -190,7 +193,7 @@ def expand(image, boxes, filler):
         0)  # (n_objects, 4), n_objects is the no. of objects in this image
     return new_image, new_boxes
 
-def random_crop(image, boxes, labels, difficulties):
+def random_crop(image, boxes, labels):
     """
     Performs a random crop in the manner stated in the paper. Helps to learn to detect larger and partial objects.
 
@@ -201,8 +204,7 @@ def random_crop(image, boxes, labels, difficulties):
     :param image: image, a tensor of dimensions (3, original_h, original_w)
     :param boxes: bounding boxes in boundary coordinates, a tensor of dimensions (n_objects, 4)
     :param labels: labels of objects, a tensor of dimensions (n_objects)
-    :param difficulties: difficulties of detection of these objects, a tensor of dimensions (n_objects)
-    :return: cropped image, updated bounding box coordinates, updated labels, updated difficulties
+    :return: cropped image, updated bounding box coordinates, updated labels
     """
     original_h = image.size(1)
     original_w = image.size(2)
@@ -213,7 +215,7 @@ def random_crop(image, boxes, labels, difficulties):
         min_overlap = random.choice([0., .1, .3, .5, .7, .9, None])
         # If not cropping
         if min_overlap is None:
-            return image, boxes, labels, difficulties
+            return image, boxes, labels
         # Try up to 50 times for this choice of minimum overlap
         # This isn't mentioned in the paper, of course, but 50 is chosen in paper authors' original Caffe repo
         max_trials = 50
@@ -237,8 +239,7 @@ def random_crop(image, boxes, labels, difficulties):
             crop = torch.FloatTensor([left, top, right, bottom])  # (4)
             # Calculate Jaccard overlap between the crop and the bounding boxes
             # NOTE: do code verification with this one please
-            overlap = jaccard(crop.unsqueeze(0),
-                              boxes)  # (1, n_objects), n_objects is the no. of objects in this image
+            overlap = jaccard(crop.unsqueeze(0),boxes)  # (1, n_objects), n_objects is the no. of objects in this image
             overlap = overlap.squeeze(0)  # (n_objects)
             # If not a single bounding box has a Jaccard overlap of greater than the minimum, try again
             if overlap.max().item() < min_overlap:
@@ -256,7 +257,6 @@ def random_crop(image, boxes, labels, difficulties):
             # Discard bounding boxes that don't meet this criterion
             new_boxes = boxes[centers_in_crop, :]
             new_labels = labels[centers_in_crop]
-            new_difficulties = difficulties[centers_in_crop]
             # Calculate bounding boxes' new coordinates in the crop
             new_boxes[:, :2] = torch.max(
                 new_boxes[:, :2], crop[:2])  # crop[:2] is [left, top]
@@ -264,7 +264,7 @@ def random_crop(image, boxes, labels, difficulties):
             # crop[2:] is [right, bottom]
             new_boxes[:, 2:] = torch.min(new_boxes[:, 2:], crop[2:])
             new_boxes[:, 2:] -= crop[:2]
-            return new_image, new_boxes, new_labels, new_difficulties
+            return new_image, new_boxes, new_labels
 
 def flip(image, boxes):
     """
@@ -331,16 +331,15 @@ def photometric_distort(image):
             new_image = d(new_image, adjust_factor)
     return new_image
 
-def transform(image, boxes, labels, difficulties, split):
+def transform(image, boxes, labels, split):
     """
     Apply the transformations above.
 
     :param image: image, a PIL Image
     :param boxes: bounding boxes in boundary coordinates, a tensor of dimensions (n_objects, 4)
     :param labels: labels of objects, a tensor of dimensions (n_objects)
-    :param difficulties: difficulties of detection of these objects, a tensor of dimensions (n_objects)
     :param split: one of 'TRAIN' or 'TEST', since different sets of transformations are applied
-    :return: transformed image, transformed bounding box coordinates, transformed labels, transformed difficulties
+    :return: transformed image, transformed bounding box coordinates, transformed labels
     """
     assert split in {'TRAIN', 'TEST'}
     # Mean and standard deviation of ImageNet data that our base VGG from torchvision was trained on
@@ -350,7 +349,6 @@ def transform(image, boxes, labels, difficulties, split):
     new_image = image
     new_boxes = boxes
     new_labels = labels
-    new_difficulties = difficulties
     # Skip the following operations for evaluation/testing
     if split == 'TRAIN':
         # A series of photometric distortions in random order, each with 50% chance of occurrence, as in Caffe repo
@@ -362,8 +360,7 @@ def transform(image, boxes, labels, difficulties, split):
         if random.random() < 0.5:
             new_image, new_boxes = expand(new_image, boxes, filler=mean)
         # Randomly crop image (zoom in)
-        new_image, new_boxes, new_labels, new_difficulties = random_crop(new_image, new_boxes, new_labels,
-                                                                         new_difficulties)
+        new_image, new_boxes, new_labels= random_crop(new_image, new_boxes, new_labels)
         # Convert Torch tensor to PIL image
         new_image = FT.to_pil_image(new_image)
         # Flip image with a 50% chance
@@ -375,4 +372,4 @@ def transform(image, boxes, labels, difficulties, split):
     new_image = FT.to_tensor(new_image)
     # Normalize by mean and standard deviation of ImageNet data that our base VGG was trained on
     new_image = FT.normalize(new_image, mean=mean, std=std)
-    return new_image, new_boxes, new_labels, new_difficulties
+    return new_image, new_boxes, new_labels
