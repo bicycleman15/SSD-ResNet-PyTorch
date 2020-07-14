@@ -25,7 +25,7 @@ class COCODataset(Dataset):
         old_dims = torch.FloatTensor([img.width, img.height, img.width, img.height])
         new_boxes = bboxs / old_dims
 
-        bbox_labels = [x['category_id'] for x in label]
+        bbox_labels = [x['category_id']-1 for x in label]
         bbox_labels = torch.LongTensor(bbox_labels)
 
         # TODO :- apply transforms below 

@@ -1,5 +1,5 @@
 config = {
-    'num_classes': 81,
+    'num_classes': 91,
     'lr_steps': (280000, 360000, 400000),
     'max_iter': 400000,
     'feature_maps': [38, 19, 10, 5, 3, 1],

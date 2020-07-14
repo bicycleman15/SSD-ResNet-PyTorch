@@ -56,7 +56,7 @@ class SSD300(nn.Module):
         super().__init__()
 
         self.feature_provider = backbone  # initialising our feature provider backbone
-        self.label_num = 81  # number of COCO classes
+        self.label_num = 91  # number of COCO classes
 
         # contains all the feature maps's shapes as string for easy reference
         features_list = ["38x38", "19x19", "10x10", "5x5", "3x3", "1x1"]

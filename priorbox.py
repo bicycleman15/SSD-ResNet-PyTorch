@@ -24,29 +24,56 @@ class PriorBox(object):
         self.aspect_ratios = cfg['aspect_ratios']
         
     def create_priors(self):
-        mean = []
-        for k, f in enumerate(self.feature_maps):
-            for i, j in product(range(f), repeat=2):
-                f_k = self.image_size / self.steps[k]
-                # unit center x,y
-                cx = (j + 0.5) / f_k
-                cy = (i + 0.5) / f_k
+        """
+        Create the 8732 prior (default) boxes for the SSD300, as defined in the paper.
+        :return: prior boxes in center-size coordinates, a tensor of dimensions (8732, 4)
+        """
+        fmap_dims = {'conv4_3': 38,
+                     'conv7': 19,
+                     'conv8_2': 10,
+                     'conv9_2': 5,
+                     'conv10_2': 3,
+                     'conv11_2': 1}
 
-                # aspect_ratio: 1
-                # rel size: min_size
-                s_k = self.min_sizes[k]/self.image_size
-                mean += [cx, cy, s_k, s_k]
+        obj_scales = {'conv4_3': 0.1,
+                      'conv7': 0.2,
+                      'conv8_2': 0.375,
+                      'conv9_2': 0.55,
+                      'conv10_2': 0.725,
+                      'conv11_2': 0.9}
 
-                # aspect_ratio: 1
-                # rel size: sqrt(s_k * s_(k+1))
-                s_k_prime = sqrt(s_k * (self.max_sizes[k]/self.image_size))
-                mean += [cx, cy, s_k_prime, s_k_prime]
+        aspect_ratios = {'conv4_3': [1., 2., 0.5],
+                         'conv7': [1., 2., 3., 0.5, .333],
+                         'conv8_2': [1., 2., 3., 0.5, .333],
+                         'conv9_2': [1., 2., 3., 0.5, .333],
+                         'conv10_2': [1., 2., 0.5],
+                         'conv11_2': [1., 2., 0.5]}
 
-                # rest of aspect ratios
-                for ar in self.aspect_ratios[k]:
-                    mean += [cx, cy, s_k*sqrt(ar), s_k/sqrt(ar)]
-                    mean += [cx, cy, s_k/sqrt(ar), s_k*sqrt(ar)]
-            # back to torch land
-            output = torch.Tensor(mean).view(-1, 4)
-            output.clamp_(max=1, min=0)
-            return output
+        fmaps = list(fmap_dims.keys())
+
+        prior_boxes = []
+
+        for k, fmap in enumerate(fmaps):
+            for i in range(fmap_dims[fmap]):
+                for j in range(fmap_dims[fmap]):
+                    cx = (j + 0.5) / fmap_dims[fmap]
+                    cy = (i + 0.5) / fmap_dims[fmap]
+
+                    for ratio in aspect_ratios[fmap]:
+                        prior_boxes.append([cx, cy, obj_scales[fmap] * sqrt(ratio), obj_scales[fmap] / sqrt(ratio)])
+
+                        # For an aspect ratio of 1, use an additional prior whose scale is the geometric mean of the
+                        # scale of the current feature map and the scale of the next feature map
+                        if ratio == 1.:
+                            try:
+                                additional_scale = sqrt(obj_scales[fmap] * obj_scales[fmaps[k + 1]])
+                            # For the last feature map, there is no "next" feature map
+                            except IndexError:
+                                additional_scale = 1.
+                            prior_boxes.append([cx, cy, additional_scale, additional_scale])
+
+        prior_boxes = torch.FloatTensor(prior_boxes)  # (8732, 4)
+        prior_boxes.clamp_(0, 1)  # (8732, 4)
+
+        return prior_boxes
+        

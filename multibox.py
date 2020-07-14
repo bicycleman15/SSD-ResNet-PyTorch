@@ -31,7 +31,7 @@ class MultiBoxLoss(nn.Module):
     def __init__(self, num_classes, priors, cfg, overlap_thresh = 0.5, neg_pos = 3):
         super(MultiBoxLoss, self).__init__()
 
-        self.num_classes = num_classes # Total classes + 1 for background
+        self.num_classes = num_classes
         self.threshold = overlap_thresh
         self.negpos_ratio = neg_pos
         self.variance = cfg['variance']
@@ -73,7 +73,10 @@ class MultiBoxLoss(nn.Module):
         n_pos = pos_priors.sum(dim=1) # [num]
         n_hard_negs = self.negpos_ratio * n_pos
 
-        conf_loss_all = F.cross_entropy(conf_preds.view(-1,self.num_classes), conf_t.view(-1), reduction='none')
+        print(conf_preds.shape)
+        print(conf_t.shape)
+
+        conf_loss_all = F.cross_entropy(conf_preds.view(-1, self.num_classes), conf_t.view(-1), reduction='none')
         
         conf_loss_all = conf_loss_all.view(num, num_priors)
 

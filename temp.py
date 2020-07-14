@@ -3,7 +3,7 @@ from config import config
 priors = PriorBox(cfg = config)
 import torch
 
-num_classes = 80 + 1 # +1 for background class
+num_classes = config['num_classes'] # +1 for background class
 
 priors = priors.create_priors()
 
@@ -26,7 +26,15 @@ train_loader = torch.utils.data.DataLoader(data, batch_size=2, shuffle=True,
                                                collate_fn=data.collate_fn, num_workers=4)
 
 for imgs, bboxs, labels in train_loader:
+    print(imgs.shape)
+    imgs = imgs.cuda()
     locs, confs = model(imgs)
+
+    bboxs = [x.float() for x in bboxs]
+    
     print(locs.shape)
     print(confs.shape)
+
+    loss = criterion.forward(locs, confs, bboxs, labels)
+    print(loss)
     break
