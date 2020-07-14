@@ -29,8 +29,6 @@ for imgs, bboxs, labels in train_loader:
     print(imgs.shape)
     imgs = imgs.cuda()
     locs, confs = model(imgs)
-
-    bboxs = [x.float() for x in bboxs]
     
     print(locs.shape)
     print(confs.shape)

@@ -31,6 +31,8 @@ class COCODataset(Dataset):
         # TODO :- apply transforms below 
         new_img = FT.resize(img, (300,300))
         new_img = FT.to_tensor(new_img)
+
+        new_boxes = new_boxes.float()
         
         return new_img, new_boxes,bbox_labels
     
