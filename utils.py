@@ -120,6 +120,9 @@ def match(threshold, boxes, priors, variances, labels):
 
     # Do Bipartite matching first
 
+    if overlaps.shape[0] == 0:
+        return 0, 0
+
     # best prior for each ground truth
     best_prior_overlap, best_prior_idx = overlaps.max(dim=1)
 
@@ -352,20 +355,20 @@ def transform(image, boxes, labels, split):
     # Skip the following operations for evaluation/testing
     if split == 'TRAIN':
         # A series of photometric distortions in random order, each with 50% chance of occurrence, as in Caffe repo
-        new_image = photometric_distort(new_image)
+        # new_image = photometric_distort(new_image)
         # Convert PIL image to Torch tensor
         new_image = FT.to_tensor(new_image)
         # Expand image (zoom out) with a 50% chance - helpful for training detection of small objects
         # Fill surrounding space with the mean of ImageNet data that our base VGG was trained on
-        if random.random() < 0.5:
-            new_image, new_boxes = expand(new_image, boxes, filler=mean)
+        # if random.random() < 0.5:
+            # new_image, new_boxes = expand(new_image, boxes, filler=mean)
         # Randomly crop image (zoom in)
-        new_image, new_boxes, new_labels= random_crop(new_image, new_boxes, new_labels)
+        # new_image, new_boxes, new_labels= random_crop(new_image, new_boxes, new_labels)
         # Convert Torch tensor to PIL image
         new_image = FT.to_pil_image(new_image)
         # Flip image with a 50% chance
-        if random.random() < 0.5:
-            new_image, new_boxes = flip(new_image, new_boxes)
+        # if random.random() < 0.5:
+            # new_image, new_boxes = flip(new_image, new_boxes)
     # Resize image to (300, 300) - this also converts absolute boundary coordinates to their fractional form
     new_image, new_boxes = resize(new_image, new_boxes, dims=(300, 300))
     # Convert PIL image to Torch tensor
