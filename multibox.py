@@ -97,5 +97,5 @@ class MultiBoxLoss(nn.Module):
         conf_loss /= N
 
         # TOTAL LOSS  = L(x,c,l,g) = (Lconf(x, c) + α * Lloc(x,l,g)) / N
-        return conf_loss + self.alpha * loc_loss
+        return conf_loss + self.alpha * loc_loss, conf_loss,loc_loss
 

@@ -72,53 +72,76 @@ def train(config : dict):
 
     print('Starting Training')
 
+    # TODO Add LR plotter
+    # add {val loss, train loss}/epoch
+    # add {train loss}/iteration
+    # 
     writer = SummaryWriter(comment='lr={} task={}'.format(config['lr'], config['name']))
     t_start_training = time.time()
-
+    iterations=0
     for epoch in range(starting_epoch, num_epochs):
+        totalTrainLoss=0
+        for batch_no,(imgs, bboxs, labels) in enumerate(train_loader):
 
-        current_lr = _get_lr(optimizer)
-        epoch_start_time = time.time()  # timer for entire epoch
+            optimizer.zero_grad()
 
-        conf_matrix, train_loss, train_auc, train_acc = _train_model(
-            model, train_loader, epoch, num_epochs, config['batch_size'], optimizer, criterion, writer, current_lr, log_train)
-        
-        print("Confusion matrix Train here...")
-        print(conf_matrix)
+            imgs = imgs.cuda()
+            locs, confs = model(imgs)
 
-        conf_matrix_val, val_loss, val_auc, val_acc = _eval_model(
-            model, val_loader, epoch, num_epochs, config['batch_size'], val_criterion, writer, log_val)
+            summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
+            totalTrainLoss+=summed_multibox_loss.iten()
+            summed_multibox_loss.backward()
+            optimizer.step()
 
-        print("Confusion matrix Val here...")
-        print(conf_matrix_val)
+            if(iterations%10==0):
+                writer.add_scalar("Train Loss vs Iteration", summed_multibox_loss, iterations)
+                print("[Epoch: {0} / {1} | Batch : {2} / {3} ]| Batch Loss : {4:.4}".format(
+                      epoch + 1,
+                      num_epochs,
+                      batch_no,
+                      len(train_loader),
+                      summed_multibox_loss
+                    )
+                )
+            iterations+=1
 
-        scheduler.step(val_loss)
-
-        t_end = time.time()
-        delta = t_end - epoch_start_time
-
-        print("train loss : {:0.4f} | train auc {:0.4f} | train acc {:0.4f} | val loss {:0.4f} | val auc {:0.4f} | val acc {:0.4f} |  elapsed time {} s".format(
-            train_loss, train_auc, train_acc, val_loss, val_auc, val_acc, delta))
-
-        print('-' * 30)
-
+        print("#"*50,"\n\n","Epoch {} has completed.\nTotal Train Loss : {} ".format(epoch,totalTrainLoss))
+        writer.add_scalar("Train Loss vs Epoch", totalTrainLoss, epoch)
+        totalValLoss=evaluate_val(val_loader,model,criterion)
+        writer.add_scalar("Train Loss vs Epoch", totalValLoss, epoch)
+        print("Total Val Loss : {} ".format(epoch,totalValLoss),"\n\n","#"*50)
+        writer.add_scalar("LR vs Epoch", _get_lr(optimizer), epoch)
+        scheduler.step()
         writer.flush()
 
-        if val_acc > best_val_auc:
-            best_val_auc = val_acc
-
-        # Decide when to save model
-            if bool(config['save_model']):
-                file_name = 'model_{}_val_acc_{:0.4f}_epoch_{}.pth'.format(config['name'], val_acc, epoch+1)
-                torch.save({
-                    'model_state_dict': model.state_dict()
-                }, './weights/{}'.format(file_name))
+        #Saving the model
+        if bool(config['save_model']):
+            file_name = 'model_{}_val_acc_{:0.4f}_epoch_{}.pth'.format(config['name'], val_acc, epoch+1)
+            torch.save({
+                'model_state_dict': model.state_dict()
+            }, './weights/{}'.format(file_name))
 
     t_end_training = time.time()
     print(f'training took {t_end_training - t_start_training} s')
     writer.flush()
     writer.close()
 
+def evaluate_val(dataloader,model,criterion):
+    totalLoss=0
+    with torch.no_grad():
+        for batch_no,(imgs, bboxs, labels) in enumerate(dataloader):
+
+
+                imgs = imgs.cuda()
+                locs, confs = model(imgs)
+
+                summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
+                totalLoss+=summed_multibox_loss.iten()
+    return totalLoss
+
+def _get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr'] 
 if __name__ == '__main__':
 
     print('Training Configuration')
