@@ -38,7 +38,7 @@ for imgs, bboxs, labels in (train_loader):
     imgs = imgs.cuda("cuda:1")
     locs, confs = model(imgs)
 
-    loss = criterion.forward(locs, confs, bboxs, labels)
+    loss,a,b = criterion.forward(locs, confs, bboxs, labels)
 
     loss.backward()
     optimizer.step()
