@@ -49,6 +49,7 @@ def train(config):
 
     # TODO why are you taking this first priors already
     priors = PriorBox(cfg = config)
+    priors = priors.create_priors()
     criterion = MultiBoxLoss(num_classes,priors,config)
     val_criterion = MultiBoxLoss(num_classes,priors,config)
 
@@ -64,10 +65,6 @@ def train(config):
     starting_epoch = config['starting_epoch']
     num_epochs = config['max_epoch']
     patience = config['patience']
-    log_train = int(config['log_train'])
-    log_val = int(config['log_val'])
-
-    best_val_auc = float(0)
 
     print('Starting Training')
 
@@ -80,8 +77,8 @@ def train(config):
     iterations=0
     for epoch in range(starting_epoch, num_epochs):
         totalTrainLoss=0
-        for batch_no,(imgs, bboxs, labels) in enumerate(train_loader):
-
+        for batch_no,curdata in enumerate(train_loader):
+            (imgs, bboxs, labels)=curdata
             optimizer.zero_grad()
 
             imgs = imgs.cuda("cuda:1")
