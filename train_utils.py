@@ -19,8 +19,8 @@ def _train_model(model, train_loader, epoch, num_epochs, batch_size, optimizer, 
         optimizer.zero_grad()
 
         if torch.cuda.is_available():
-            images = images.cuda("cuda:1")
-            label = label.cuda("cuda:1")
+            images = images.cuda("cuda:2")
+            label = label.cuda("cuda:2")
 
         output = model(images)
 
@@ -99,8 +99,8 @@ def _eval_model(model, val_loader, epoch, num_epochs, batch_size, criterion, wri
     for batch_no, (images, label) in enumerate(val_loader):
 
         if torch.cuda.is_available():
-            images = images.cuda("cuda:1")
-            label = label.cuda("cuda:1")
+            images = images.cuda("cuda:2")
+            label = label.cuda("cuda:2")
 
         with torch.no_grad():
             output = model(images)
@@ -176,8 +176,8 @@ def _test_model(model, val_loader, batch_size, criterion):
     for batch_no, (images, label) in enumerate(val_loader):
 
         if torch.cuda.is_available():
-            images = images.cuda("cuda:1")
-            label = label.cuda("cuda:1")
+            images = images.cuda("cuda:2")
+            label = label.cuda("cuda:2")
 
         with torch.no_grad():
             output = model(images)

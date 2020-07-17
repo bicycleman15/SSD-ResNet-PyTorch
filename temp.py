@@ -10,14 +10,14 @@ priors = priors.create_priors()
 from multibox import MultiBoxLoss
 criterion = MultiBoxLoss(num_classes,priors,config)
 if torch.cuda.is_available():
-    criterion.cuda("cuda:1")
+    criterion.cuda("cuda:2")
 
 from model import SSD300
 
 model = SSD300()
 
 if torch.cuda.is_available():
-    model.cuda("cuda:1")
+    model.cuda("cuda:2")
 
 from dataset import COCODataset
 
@@ -35,7 +35,7 @@ for imgs, bboxs, labels in (train_loader):
 
     optimizer.zero_grad()
 
-    imgs = imgs.cuda("cuda:1")
+    imgs = imgs.cuda("cuda:2")
     locs, confs = model(imgs)
 
     loss,a,b = criterion.forward(locs, confs, bboxs, labels)
