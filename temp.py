@@ -21,7 +21,7 @@ if torch.cuda.is_available():
 
 from dataset import COCODataset
 
-data = COCODataset('../val2017','../annotations/instances_val2017.json',split='TRAIN')
+data = COCODataset('dataset/val2017','dataset/annotations/instances_val2017.json',split='TRAIN')
 train_loader = torch.utils.data.DataLoader(data, batch_size=2, shuffle=True,
                                                collate_fn=data.collate_fn, num_workers=4)
 
