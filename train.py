@@ -43,7 +43,7 @@ def train(config):
     print('Initializing Model...')
     model = SSD300()
     if torch.cuda.is_available():
-        model = model.cuda()
+        model = model.cuda("cuda:1")
 
     print('Initializing Loss Method...')
 
@@ -53,8 +53,8 @@ def train(config):
     val_criterion = MultiBoxLoss(num_classes,priors,config)
 
     if torch.cuda.is_available():
-        criterion = criterion.cuda()
-        val_criterion = val_criterion.cuda()
+        criterion = criterion.cuda("cuda:1")
+        val_criterion = val_criterion.cuda("cuda:1")
 
     print('Setup the Optimizer')
     optimizer = torch.optim.SGD(model.parameters(), lr=config['lr'], weight_decay=config['weight_decay'])
@@ -84,7 +84,7 @@ def train(config):
 
             optimizer.zero_grad()
 
-            imgs = imgs.cuda()
+            imgs = imgs.cuda("cuda:1")
             locs, confs = model(imgs)
 
             summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
@@ -131,7 +131,7 @@ def evaluate_val(dataloader,model,criterion):
         for batch_no,(imgs, bboxs, labels) in enumerate(dataloader):
 
 
-                imgs = imgs.cuda()
+                imgs = imgs.cuda("cuda:1")
                 locs, confs = model(imgs)
 
                 summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)

@@ -63,8 +63,8 @@ class MultiBoxLoss(nn.Module):
             loc_t[idx], conf_t[idx] = match(self.threshold, boxes[idx].data, priors.data, self.variance, labels[idx].data)
         
         if torch.cuda.is_available():
-            loc_t = loc_t.cuda()
-            conf_t = conf_t.cuda()
+            loc_t = loc_t.cuda("cuda:1")
+            conf_t = conf_t.cuda("cuda:1")
 
         pos_priors = conf_t > 0 # [num, 8732]
 
@@ -86,7 +86,7 @@ class MultiBoxLoss(nn.Module):
         
         hardness_ranks = torch.LongTensor(range(num_priors)).unsqueeze(0).expand_as(conf_loss_neg)  # (num, 8732)
         if torch.cuda.is_available():
-            hardness_ranks = hardness_ranks.cuda()
+            hardness_ranks = hardness_ranks.cuda("cuda:1")
         hard_negatives = hardness_ranks < n_hard_negs.unsqueeze(1)  # (num, 8732)
         conf_loss_hard_neg = conf_loss_neg[hard_negatives]  # (sum(n_hard_negs))
 
