@@ -32,12 +32,12 @@ def train(config):
 
     train_data = COCODataset('dataset/train2017','dataset/annotations/instances_train2017.json',split="train")
     train_loader = data.DataLoader(
-        train_data, batch_size=config['batch_size'], num_workers=8, shuffle=True
+        train_data, batch_size=config['batch_size'], num_workers=8, shuffle=True,collate_fn=train_data.collate_fn
     )
 
     val_data = COCODataset('dataset/val2017','dataset/annotations/instances_val2017.json',split='test')
     val_loader = data.DataLoader(
-        val_data, batch_size=4, num_workers=8, shuffle=False
+        val_data, batch_size=4, num_workers=8, collate_fn=val_data.collate_fn,shuffle=False
     )
 
     print('Initializing Model...')
