@@ -35,7 +35,7 @@ def train(config):
         train_data, batch_size=config['batch_size'], num_workers=8, shuffle=True
     )
 
-    val_data = CTData('dataset/val2017','dataset/annotations/instances_val2017.json',split='test')
+    val_data = COCODataset('dataset/val2017','dataset/annotations/instances_val2017.json',split='test')
     val_loader = data.DataLoader(
         val_data, batch_size=4, num_workers=8, shuffle=False
     )
