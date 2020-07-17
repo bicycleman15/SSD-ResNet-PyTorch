@@ -1,5 +1,4 @@
-from dataset import CTData
-from model import CovidCT
+
 from config import config
 
 from dataset import COCODataset
