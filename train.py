@@ -21,7 +21,7 @@ Input params:
     config_file: Takes in configurations to train with 
 """
 
-def train(config : dict):
+def train(config):
     """
     Function where actual training takes place
     Args:
