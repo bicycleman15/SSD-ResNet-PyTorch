@@ -85,7 +85,7 @@ def train(config):
             locs, confs = model(imgs)
 
             summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
-            totalTrainLoss+=summed_multibox_loss.iten()
+            totalTrainLoss+=summed_multibox_loss.item()
             summed_multibox_loss.backward()
             optimizer.step()
 
@@ -132,7 +132,7 @@ def evaluate_val(dataloader,model,criterion):
                 locs, confs = model(imgs)
 
                 summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
-                totalLoss+=summed_multibox_loss.iten()
+                totalLoss+=summed_multibox_loss.item()
     return totalLoss
 
 def _get_lr(optimizer):
