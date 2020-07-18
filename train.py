@@ -68,15 +68,12 @@ def train(config):
 
     print('Starting Training')
 
-    # TODO Add LR plotter
-    # add {val loss, train loss}/epoch
-    # add {train loss}/iteration
-    # 
+    
     writer = SummaryWriter(comment='lr={} task={}'.format(config['lr'], config['name']))
     t_start_training = time.time()
     iterations=0
+    totalTrainLoss=0
     for epoch in range(starting_epoch, num_epochs):
-        totalTrainLoss=0
         for batch_no,curdata in enumerate(train_loader):
             print("[Epoch: {0} / {1} | Batch : {2} / {3} ]|".format(
                       epoch + 1,
@@ -95,7 +92,7 @@ def train(config):
             summed_multibox_loss.backward()
             optimizer.step()
 
-            if(iterations%500==0):
+            if(batch_no%500==0):
                 writer.add_scalar("Train Loss vs Iteration", summed_multibox_loss, iterations)
                 print("[Epoch: {0} / {1} | Batch : {2} / {3} ]| Batch Loss : {4:.4}".format(
                       epoch + 1,
@@ -107,11 +104,11 @@ def train(config):
                 )
             iterations+=1
 
-        print("#"*50,"\n\n","Epoch {} has completed.\nTotal Train Loss : {} ".format(epoch,totalTrainLoss))
+        print("#"*50,"\n","Epoch {} has completed.\nTotal Train Loss : {} ".format(epoch,totalTrainLoss))
         writer.add_scalar("Train Loss vs Epoch", totalTrainLoss, epoch)
         totalValLoss=evaluate_val(val_loader,model,criterion)
         writer.add_scalar("Train Loss vs Epoch", totalValLoss, epoch)
-        print("Total Val Loss : {} ".format(epoch,totalValLoss),"\n\n","#"*50)
+        print("\nTotal Val Loss : {} ".format(totalValLoss),"\n")
         writer.add_scalar("LR vs Epoch", _get_lr(optimizer), epoch)
         scheduler.step(totalValLoss)
         writer.flush()
