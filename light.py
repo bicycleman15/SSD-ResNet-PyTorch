@@ -71,6 +71,6 @@ model = SSD_simple(config=config)
 
 from pytorch_lightning import Trainer
 
-trainer = Trainer(fast_dev_run=True,gpus=1)
+trainer = Trainer(gpus=1)
 
 trainer.fit(model)
