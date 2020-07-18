@@ -72,8 +72,9 @@ def train(config):
     writer = SummaryWriter(comment='lr={} task={}'.format(config['lr'], config['name']))
     t_start_training = time.time()
     iterations=0
-    totalTrainLoss=0
     for epoch in range(starting_epoch, num_epochs):
+        totalTrainLoss=0
+        maxtloss=0
         for batch_no,curdata in enumerate(train_loader):
             print("[Epoch: {0} / {1} | Batch : {2} / {3} ]|".format(
                       epoch + 1,
@@ -89,11 +90,12 @@ def train(config):
 
             summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
             totalTrainLoss+=summed_multibox_loss.item()
+            maxtloss=max(maxtloss,summed_multibox_loss.item())
             summed_multibox_loss.backward()
             optimizer.step()
 
             if(batch_no%500==0):
-                writer.add_scalar("Train Loss vs Iteration", summed_multibox_loss, iterations)
+                writer.add_scalar("Train Loss vs Iteration", summed_multibox_loss.item(), iterations)
                 print("[Epoch: {0} / {1} | Batch : {2} / {3} ]| Batch Loss : {4:.4}".format(
                       epoch + 1,
                       num_epochs,
@@ -104,9 +106,9 @@ def train(config):
                 )
             iterations+=1
 
-        print("#"*50,"\n","Epoch {} has completed.\nTotal Train Loss : {} ".format(epoch,totalTrainLoss))
-        writer.add_scalar("Train Loss vs Epoch", totalTrainLoss, epoch)
+        print("#"*50,"\n","Epoch {} has completed.\nTotal Train Loss : {} | maxi at batch : {}".format(epoch,totalTrainLoss,maxtloss))
         totalValLoss=evaluate_val(val_loader,model,criterion)
+        writer.add_scalar("Train Loss vs Epoch", totalTrainLoss, epoch)
         writer.add_scalar("Train Loss vs Epoch", totalValLoss, epoch)
         print("\nTotal Val Loss : {} ".format(totalValLoss),"\n")
         writer.add_scalar("LR vs Epoch", _get_lr(optimizer), epoch)
