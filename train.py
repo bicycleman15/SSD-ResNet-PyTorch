@@ -118,7 +118,7 @@ def train(config):
 
         #Saving the model
         if bool(config['save_model']):
-            file_name = 'model_{}_val_acc_{:0.4f}_epoch_{}.pth'.format(config['name'], val_acc, epoch+1)
+            file_name = 'model_{}_epoch_{}.pth'.format(config['name'], epoch+1)
             torch.save({
                 'model_state_dict': model.state_dict()
             }, './weights/{}'.format(file_name))
@@ -132,13 +132,17 @@ def evaluate_val(dataloader,model,criterion):
     totalLoss=0
     with torch.no_grad():
         for batch_no,(imgs, bboxs, labels) in enumerate(dataloader):
+            print("Evaluation on val dataset going on Batch : {0} / {1} ]|".format(
+                      batch_no,
+                      len(train_loader)
+                    ),end="\r")
 
 
-                imgs = imgs.cuda("cuda:2")
-                locs, confs = model(imgs)
+            imgs = imgs.cuda("cuda:2")
+            locs, confs = model(imgs)
 
-                summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
-                totalLoss+=summed_multibox_loss.item()
+            summed_multibox_loss, conf_loss,loc_loss = criterion.forward(locs, confs, bboxs, labels)
+            totalLoss+=summed_multibox_loss.item()
     return totalLoss
 
 def _get_lr(optimizer):
