@@ -78,6 +78,12 @@ def train(config):
     for epoch in range(starting_epoch, num_epochs):
         totalTrainLoss=0
         for batch_no,curdata in enumerate(train_loader):
+            print("[Epoch: {0} / {1} | Batch : {2} / {3} ]|".format(
+                      epoch + 1,
+                      num_epochs,
+                      batch_no,
+                      len(train_loader)
+                    ),end="\r")
             (imgs, bboxs, labels)=curdata
             optimizer.zero_grad()
 
@@ -89,7 +95,7 @@ def train(config):
             summed_multibox_loss.backward()
             optimizer.step()
 
-            if(iterations%10==0):
+            if(iterations%500==0):
                 writer.add_scalar("Train Loss vs Iteration", summed_multibox_loss, iterations)
                 print("[Epoch: {0} / {1} | Batch : {2} / {3} ]| Batch Loss : {4:.4}".format(
                       epoch + 1,
@@ -107,7 +113,7 @@ def train(config):
         writer.add_scalar("Train Loss vs Epoch", totalValLoss, epoch)
         print("Total Val Loss : {} ".format(epoch,totalValLoss),"\n\n","#"*50)
         writer.add_scalar("LR vs Epoch", _get_lr(optimizer), epoch)
-        scheduler.step()
+        scheduler.step(totalValLoss)
         writer.flush()
 
         #Saving the model
