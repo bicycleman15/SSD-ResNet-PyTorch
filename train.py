@@ -30,7 +30,7 @@ def train(config):
     
     print('Starting to Train Model...')
 
-    train_data = COCODataset('dataset/val2017','dataset/annotations/instances_val2017.json',split="train")
+    train_data = COCODataset('dataset/train2017','dataset/annotations/instances_train2017.json',split="train")
     train_loader = data.DataLoader(
         train_data, batch_size=config['batch_size'], num_workers=8, shuffle=True,collate_fn=train_data.collate_fn
     )
