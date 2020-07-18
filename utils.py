@@ -118,8 +118,9 @@ def match(threshold, boxes, priors, variances, labels):
         point_form(priors)
     )
 
-    # Do Bipartite matching first
+    # Do Bipartite matching first   
 
+    # No GT BBox present
     if overlaps.shape[0] == 0:
         return 0, 0
 

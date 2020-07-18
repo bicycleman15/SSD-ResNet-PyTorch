@@ -40,7 +40,6 @@ class COCODataset(Dataset):
 
         bboxs = torch.from_numpy(bboxs).float()
 
-
         bbox_labels = [x['category_id']-1 for x in label]
 
         if len(bbox_labels) == 0:

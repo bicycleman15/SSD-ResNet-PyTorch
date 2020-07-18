@@ -28,7 +28,7 @@ class MultiBoxLoss(nn.Module):
         See: https://arxiv.org/pdf/1512.02325.pdf for more details.
     """
 
-    def __init__(self, num_classes, priors, cfg, overlap_thresh = 0.5, neg_pos = 3):
+    def __init__(self, num_classes, priors, cfg, device, overlap_thresh = 0.5, neg_pos = 3):
         super(MultiBoxLoss, self).__init__()
 
         self.num_classes = num_classes
@@ -36,7 +36,7 @@ class MultiBoxLoss(nn.Module):
         self.negpos_ratio = neg_pos
         self.variance = cfg['variance']
         self.priors = priors
-
+        self.device = device
         self.alpha = 1.0
 
     def forward(self, loc_preds, conf_preds, boxes, labels):
@@ -56,15 +56,11 @@ class MultiBoxLoss(nn.Module):
         num_classes = self.num_classes
 
         # match priors (default boxes) and ground truth boxes
-        loc_t = torch.zeros((num, num_priors, 4), dtype=torch.float, requires_grad=False)
-        conf_t = torch.zeros((num, num_priors), dtype=torch.long, requires_grad=False)
+        loc_t = torch.zeros((num, num_priors, 4), dtype=torch.float, requires_grad=False).to(self.device)
+        conf_t = torch.zeros((num, num_priors), dtype=torch.long, requires_grad=False).to(self.device)
 
         for idx in range(num):  # CPU calc below
-            loc_t[idx], conf_t[idx] = match(self.threshold, boxes[idx].data, priors.data, self.variance, labels[idx].data)
-        
-        if torch.cuda.is_available():
-            loc_t = loc_t.cuda("cuda:2")
-            conf_t = conf_t.cuda("cuda:2")
+            loc_t[idx], conf_t[idx] = match(self.threshold, boxes[idx], priors, self.variance, labels[idx])
 
         pos_priors = conf_t > 0 # [num, 8732]
 
@@ -84,9 +80,7 @@ class MultiBoxLoss(nn.Module):
 
         conf_loss_neg, _ = conf_loss_neg.sort(dim=1, descending=True) # [num,8732]
         
-        hardness_ranks = torch.LongTensor(range(num_priors)).unsqueeze(0).expand_as(conf_loss_neg)  # (num, 8732)
-        if torch.cuda.is_available():
-            hardness_ranks = hardness_ranks.cuda("cuda:2")
+        hardness_ranks = torch.LongTensor(range(num_priors)).unsqueeze(0).expand_as(conf_loss_neg).to(self.device)  # (num, 8732)
         hard_negatives = hardness_ranks < n_hard_negs.unsqueeze(1)  # (num, 8732)
         conf_loss_hard_neg = conf_loss_neg[hard_negatives]  # (sum(n_hard_negs))
 
@@ -97,5 +91,5 @@ class MultiBoxLoss(nn.Module):
         conf_loss /= N
 
         # TOTAL LOSS  = L(x,c,l,g) = (Lconf(x, c) + α * Lloc(x,l,g)) / N
-        return conf_loss + self.alpha * loc_loss, conf_loss,loc_loss
+        return loc_loss, conf_loss
 
