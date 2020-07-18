@@ -134,7 +134,7 @@ def evaluate_val(dataloader,model,criterion):
         for batch_no,(imgs, bboxs, labels) in enumerate(dataloader):
             print("Evaluation on val dataset going on Batch : {0} / {1} ]|".format(
                       batch_no,
-                      len(train_loader)
+                      len(dataloader)
                     ),end="\r")
 
 
