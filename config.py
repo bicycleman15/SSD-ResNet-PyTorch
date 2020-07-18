@@ -15,9 +15,9 @@ config = {
 
     'max_epoch' : 50,
     'log_train' : 5,
-    'lr' : 1e-6,
+    'lr' : 1e-3,
     'starting_epoch' : 0,
-    'batch_size' : 4,
+    'batch_size' :16,
     'log_val' : 5,
     'weight_decay' : 0.01,
     'patience' : 5,
