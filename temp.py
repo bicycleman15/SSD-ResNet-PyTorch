@@ -74,17 +74,13 @@
     
 # #     i += 1
 
-import torch
-from box_utils import detect_objects
-
-locs = torch.rand(4,8732,4)
-confs = torch.rand(4,8732,91)
-
 from config import config
 from priorbox import PriorBox
-priors = PriorBox(config).create_priors()
+priors = PriorBox(config).forward()
 
-all_images_boxes, all_images_labels, all_images_scores = detect_objects(locs, confs, priors)
+# all_images_boxes, all_images_labels, all_images_scores = detect_objects(locs, confs, priors)
 
-print(all_images_boxes)
-import pdb; pdb.set_trace()
+# print(all_images_boxes)
+# import pdb; pdb.set_trace()
+
+print(priors)
