@@ -16,6 +16,7 @@ class COCODataset(Dataset):
 
     def __len__(self):
         return len(self.coco)
+        # return 12
     
     def __getitem__(self,index):
         
@@ -32,7 +33,7 @@ class COCODataset(Dataset):
             # bbox are stored as x,y,w,h
             bboxs = np.array(bboxs)
 
-        # convert to x1,y1,x2,y2 coordinate form aslo called as boundary form
+        # convert to x1,y1,x2,y2 coordinate form also called as boundary form
         # this is done because the transforms are made in accordance to the boundary
         # coordinate
         for bbox in bboxs:
@@ -44,7 +45,7 @@ class COCODataset(Dataset):
         bbox_labels = [x['category_id']-1 for x in label]
 
         if len(bbox_labels) == 0:
-            bbox_labels = np.zeros((0,91))
+            bbox_labels = torch.zeros((0,91), dtype=torch.long)
         else:
             bbox_labels = torch.LongTensor(bbox_labels)
 
