@@ -78,7 +78,8 @@ def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, e
 
         if i % log_every == 0:
             # print stats
-            stats = '{} epoch | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(epoch_no,
+            stats = ' {}/{} Epochs | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(epoch_no,
+                                                                                                       config['num_epochs'],
                                                                                                        i+1,
                                                                                                        len(train_loader),
                                                                                                        loss_c.item(),
