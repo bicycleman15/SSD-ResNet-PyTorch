@@ -16,19 +16,16 @@ config = {
     'variance': [0.1, 0.2],
 
     # Train features
-    'log_train' : 50,
     'lr' : 1e-3,
-    'starting_epoch' : 0,
     'batch_size' : 4,
-    'log_val' : 50,
     'weight_decay' : 0.01,
-    'num_epochs' : 30,
-    'log_every_train' : 50,
+    'num_epochs' : 30, # max epochs to train
+    'log_every_train' : 50, # how many batches after to print info regarding losses
     'log_every_val' : 50,
 
     'alpha' : 1.0,
     'epochs_lr' : [10, 20, 30, 40], # epochs after which to change lr
     'gamma' : 0.1, # factor by which to change
     'save_model' : True,
-    'save_model_epochs' : [10, 20, 25, 30]
+    'save_model_epochs' : [10, 20, 25, 30] # epochs after which to save model
 }
