@@ -180,7 +180,7 @@ def decode(loc, priors, variances):
     return boxes
 
 # Taken from https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection
-def detect_objects(predicted_locs, predicted_scores, priors, min_score=0.05, max_overlap=0.5, top_k=750):
+def detect_objects(predicted_locs, predicted_scores, priors, min_score=0.01, max_overlap=0.45, top_k=200):
         """
         Decipher the 8732 locations and class scores (output of ths SSD300) to detect objects.
         For each class, perform Non-Maximum Suppression (NMS) on boxes that are above a minimum threshold.
@@ -306,9 +306,7 @@ def predict_boxes(model, priors, data_loader):
             predicted_locs, predicted_scores = model(images)
 
             # Detect objects in SSD output
-            det_boxes_batch, det_labels_batch, det_scores_batch = detect_objects(predicted_locs, predicted_scores, priors
-                                                                                       min_score=0.01, max_overlap=0.45,
-                                                                                       top_k=200)
+            det_boxes_batch, det_labels_batch, det_scores_batch = detect_objects(predicted_locs, predicted_scores, priors)
             # Evaluation MUST be at min_score=0.01, max_overlap=0.45, top_k=200 for fair comparision with the paper's results and other repos
 
             # Store this batch's results for mAP calculation
