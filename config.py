@@ -1,10 +1,10 @@
 config = {
     # Basic details
     'num_classes': 91,
-    'device' : 'cuda',
-    'name': 'COCO', # experiment name
+    'device' : 'cuda:2',
+    'name': 'COCO-version1-dev', # experiment name
 
-    'num_workers' : 4,
+    'num_workers' : 12,
 
     # Prior Box features 
     'feature_maps': [38, 19, 10, 5, 3, 1],
@@ -17,15 +17,15 @@ config = {
 
     # Train features
     'lr' : 1e-3,
-    'batch_size' : 4,
-    'weight_decay' : 0.01,
-    'num_epochs' : 30, # max epochs to train
-    'log_every_train' : 50, # how many batches after to print info regarding losses
-    'log_every_val' : 50,
+    'batch_size' : 32,
+    'weight_decay' : 0.0005,
+    'num_epochs' : 10, # max epochs to train
+    'log_every_train' : 500, # how many batches after to print info regarding losses
+    'log_every_val' : 500,
 
     'alpha' : 1.0,
-    'epochs_lr' : [10, 20, 30, 40], # epochs after which to change lr
-    'gamma' : 0.1, # factor by which to change
+    'epochs_lr' : [2, 7, 30, 40], # epochs after which to change lr
+    'gamma' : 0.5, # factor by which to change
     'save_model' : True,
-    'save_model_epochs' : [10, 20, 25, 30] # epochs after which to save model
+    'save_model_epochs' : list(range(10)) # epochs after which to save model
 }

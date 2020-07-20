@@ -5,6 +5,7 @@ __pycache__/
 runs/
 # C extensions
 *.so
+lightning_logs/
 
 # Distribution / packaging
 .Python
