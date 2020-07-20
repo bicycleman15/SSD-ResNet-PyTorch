@@ -100,7 +100,7 @@ def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, e
     writer.add_scalar('Train/avg conf_loss', conf_loss, epoch_no)
     writer.add_scalar('Train/avg total_loss', total_loss, epoch_no)
 
-def val_one_epoch(model, criterion, optimizer, val_loader, writer, config, epoch_no, log_every = 50):
+def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, log_every = 50):
     """Validate the model for one complete epoch"""
     
     model.eval()
@@ -108,40 +108,36 @@ def val_one_epoch(model, criterion, optimizer, val_loader, writer, config, epoch
     conf_loss = 0
     total_loss = 0
 
-    for i, data in enumerate(val_loader):
-        images, bboxes, labels = data
+    with torch.no_grad():
+        for i, data in enumerate(val_loader):
+            images, bboxes, labels = data
 
-        images = images.to(device)
-        bboxes = [x.to(device) for x in bboxes]
-        labels = [x.to(device) for x in labels]
+            images = images.to(device)
+            bboxes = [x.to(device) for x in bboxes]
+            labels = [x.to(device) for x in labels]
 
-        optimizer.zero_grad()
+            locs, confs = model(images)
 
-        locs, confs = model(images)
+            loss_l, loss_c = criterion(locs, confs, bboxes, labels)
 
-        loss_l, loss_c = criterion(locs, confs, bboxes, labels)
+            loc_loss += loss_l.item()
+            conf_loss += loss_c.item()
 
-        loc_loss += loss_l.item()
-        conf_loss += loss_c.item()
+            loss = config['alpha'] * loss_l + loss_c
 
-        loss = config['alpha'] * loss_l + loss_c
+            total_loss += loss.item()
 
-        total_loss += loss.item()
-
-        loss.backward()
-        optimizer.step()
-
-        if i % log_every == 0:
-            # print stats
-            stats = 'Validating | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(
-                                                                                                       i+1,
-                                                                                                       len(val_loader),
-                                                                                                       loss_c.item(),
-                                                                                                       loss_l.item(),
-                                                                                                       loss.item(),
-                                                                                                       get_lr(optimizer) 
-                                                                                                    )
-            print(stats)
+            if i % log_every == 0:
+                # print stats
+                stats = 'Validating | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(
+                                                                                                        i+1,
+                                                                                                        len(val_loader),
+                                                                                                        loss_c.item(),
+                                                                                                        loss_l.item(),
+                                                                                                        loss.item(),
+                                                                                                        get_lr(optimizer) 
+                                                                                                        )
+                print(stats)
     
     # Take avg here
     conf_loss /= len(val_loader)
@@ -176,7 +172,7 @@ def main():
 
     epoch_no = 0
     step = 0
-    writer = SummaryWriter(comment='lr={} name={}'.format(config['lr'], config['name']))
+    writer = SummaryWriter(comment='name={}'.format(config['name']))
     start_training_time = time.time()
 
     num_epochs = config['num_epochs']
@@ -189,7 +185,7 @@ def main():
         train_one_epoch(model, criterion, optimizer, train_loader, writer, config, epoch_no, config['log_every_train'])
 
         # do validation
-        val_loss = val_one_epoch(model, criterion, optimizer, val_loader, writer, config, epoch_no, config['log_every_val'])
+        val_loss = val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, config['log_every_val'])
 
         epoch_end_time = time.time()
 
