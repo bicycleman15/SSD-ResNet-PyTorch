@@ -299,7 +299,7 @@ def predict_boxes(model, priors, data_loader):
 
     with torch.no_grad():
         # Batches
-        for i, (images, boxes, labels, difficulties) in enumerate(tqdm(data_loader, desc='Evaluating')):
+        for i, (images, boxes, labels) in enumerate(tqdm(data_loader, desc='Evaluating')):
             images = images.to(device)  # (N, 3, 300, 300)
 
             # Forward prop.
@@ -312,7 +312,6 @@ def predict_boxes(model, priors, data_loader):
             # Store this batch's results for mAP calculation
             boxes = [b.to(device) for b in boxes]
             labels = [l.to(device) for l in labels]
-            difficulties = [d.to(device) for d in difficulties]
 
             det_boxes.extend(det_boxes_batch)
             det_labels.extend(det_labels_batch)
