@@ -2,9 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+runs/
 # C extensions
 *.so
+lightning_logs/
 
 # Distribution / packaging
 .Python
@@ -129,3 +130,6 @@ dmypy.json
 .pyre/
 
 .vscode
+dataset/
+weights/
+runs/

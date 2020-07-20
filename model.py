@@ -18,7 +18,6 @@ class ResNet(nn.Module):
     # The resnet backbone is to be used as a feature provider.
     # For 300x300 we expect a 38x38 feature map
 
-    # TODO: Add pretrained loading feature
     def __init__(self):
         super().__init__()
         # Loading the full Resnet 50 backbone. This means that the we are currently only

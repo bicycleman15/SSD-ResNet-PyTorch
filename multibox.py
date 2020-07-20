@@ -1,9 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
+from config import config
 
-from utils import *
+from box_utils import match, log_sum_exp
+
+device = config['device']
 
 class MultiBoxLoss(nn.Module):
     """SSD Weighted Loss Function
@@ -28,18 +30,16 @@ class MultiBoxLoss(nn.Module):
         See: https://arxiv.org/pdf/1512.02325.pdf for more details.
     """
 
-    def __init__(self, num_classes, priors, cfg, overlap_thresh = 0.5, neg_pos = 3):
+    def __init__(self, priors, cfg, overlap_thresh = 0.5, neg_pos = 3):
         super(MultiBoxLoss, self).__init__()
 
-        self.num_classes = num_classes
+        self.num_classes = cfg['num_classes']
         self.threshold = overlap_thresh
         self.negpos_ratio = neg_pos
         self.variance = cfg['variance']
         self.priors = priors
 
-        self.alpha = 1.0
-
-    def forward(self, loc_preds, conf_preds, boxes, labels):
+    def forward(self, loc_data, conf_data, boxes, labels):
         """Multibox Loss
         Args:
             predictions (tuple): A tuple containing loc preds, conf preds,
@@ -51,7 +51,7 @@ class MultiBoxLoss(nn.Module):
                 shape: [batch_size,num_objs,5] (last idx is the label).
         """
         priors = self.priors
-        num = loc_preds.size(0)
+        num = loc_data.size(0) # batch size
         num_priors = priors.size(0)
         num_classes = self.num_classes
 
@@ -59,46 +59,52 @@ class MultiBoxLoss(nn.Module):
         loc_t = torch.zeros((num, num_priors, 4), dtype=torch.float, requires_grad=False)
         conf_t = torch.zeros((num, num_priors), dtype=torch.long, requires_grad=False)
 
-        for idx in range(num):  # CPU calc below
-            loc_t[idx], conf_t[idx] = match(self.threshold, boxes[idx].data, priors.data, self.variance, labels[idx].data)
+        loc_t = loc_t.to(device)
+        conf_t = conf_t.to(device)
+
+        for idx in range(num):
+            loc_t[idx], conf_t[idx] = match(self.threshold, boxes[idx], priors, self.variance, labels[idx])
         
-        if torch.cuda.is_available():
-            loc_t = loc_t.cuda()
-            conf_t = conf_t.cuda()
+        pos = conf_t > 0
+        num_pos = pos.sum(dim=1, keepdim=True)
 
-        pos_priors = conf_t > 0 # [num, 8732]
+        # Localization Loss (Smooth L1) ----------------------------
+        # Shape: [batch,num_priors,4]
+        pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
+        loc_p = loc_data[pos_idx].view(-1, 4)
+        loc_t = loc_t[pos_idx].view(-1, 4)
+        loss_l = F.smooth_l1_loss(loc_p, loc_t, reduction='sum')
+        # ----------------------------
 
-        loc_loss = F.smooth_l1_loss(loc_preds[pos_priors], loc_t[pos_priors], reduction='mean')
 
-        n_pos = pos_priors.sum(dim=1) # [num]
-        n_hard_negs = self.negpos_ratio * n_pos
+        # Hard Negative Mining ----------------------------
+        # Compute max conf across batch for hard negative mining
+        batch_conf = conf_data.view(-1, self.num_classes)
+        loss_c = log_sum_exp(batch_conf) - batch_conf.gather(1, conf_t.view(-1, 1))
 
-        print(conf_preds.shape)
-        print(conf_t.shape)
+        loss_c[pos.view(-1, 1)] = 0 # filter out pos boxes for now
+        loss_c = loss_c.view(num, -1)
+        _, loss_idx = loss_c.sort(1, descending=True)
+        _, idx_rank = loss_idx.sort(1)
+        num_pos = pos.long().sum(1, keepdim=True)
 
-        conf_loss_all = F.cross_entropy(conf_preds.view(-1, self.num_classes), conf_t.view(-1), reduction='none')
-        
-        conf_loss_all = conf_loss_all.view(num, num_priors)
+        # Here I'm taking atleast 1 neg example, in the case when there are no pos objects in a image
+        num_neg = torch.clamp(self.negpos_ratio * num_pos, min=1, max=pos.size(1)-1) # take atleast one neg example
+        neg = idx_rank < num_neg.expand_as(idx_rank)
 
-        conf_loss_pos = conf_loss_all[pos_priors]
+        # Confidence Loss Including Positive and Negative Examples
+        pos_idx = pos.unsqueeze(2).expand_as(conf_data)
+        neg_idx = neg.unsqueeze(2).expand_as(conf_data)
+        mask_idx = (pos_idx + neg_idx).gt(0) # mask_idx has shape (pos + neg examples, 91)
+        conf_p = conf_data[mask_idx].view(-1, self.num_classes)
 
-        conf_loss_neg = conf_loss_all.clone()
-        conf_loss_neg[pos_priors] = 0. # ignore pos priors
+        mask = (pos + neg).gt(0)
+        conf_gt = conf_t[mask] # mask has shape (pos + neg examples)
+        loss_c = F.cross_entropy(conf_p, conf_gt, reduction='sum')
+        # ----------------------------
 
-        conf_loss_neg, _ = conf_loss_neg.sort(dim=1, descending=True) # [num,8732]
-        
-        hardness_ranks = torch.LongTensor(range(num_priors)).unsqueeze(0).expand_as(conf_loss_neg)  # (num, 8732)
-        if torch.cuda.is_available():
-            hardness_ranks = hardness_ranks.cuda()
-        hard_negatives = hardness_ranks < n_hard_negs.unsqueeze(1)  # (num, 8732)
-        conf_loss_hard_neg = conf_loss_neg[hard_negatives]  # (sum(n_hard_negs))
-
-        # As in the paper, averaged over positive priors only, although computed over both positive and hard-negative priors
-        conf_loss = conf_loss_hard_neg.sum() + conf_loss_pos.sum()
-        N = (n_pos.sum().float() + 1e-7) 
-
-        conf_loss /= N
-
-        # TOTAL LOSS  = L(x,c,l,g) = (Lconf(x, c) + α * Lloc(x,l,g)) / N
-        return conf_loss + self.alpha * loc_loss
-
+        # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
+        N = max(num_pos.data.sum().float(), 1)
+        loss_l /= N
+        loss_c /= N
+        return loss_l, loss_c
