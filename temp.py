@@ -27,45 +27,54 @@ optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.1)
 
 from tqdm import tqdm
 
-# images, bboxes, labels = next(iter(train_loader))
+images, bboxes, labels = next(iter(train_loader))
 
 
 # print(len(bboxes))
 # print(images.shape)
 
-# images = images.to(device)
-# # bboxes = [x.cuda() for x in  bboxes] 
-# # labels = [x.cuda() for x in labels]
+images = images.to(device)
+bboxes = [x.cuda() for x in  bboxes] 
+labels = [x.cuda() for x in labels]
 
 # bboxes = [torch.zeros((0,4)).cuda(), torch.zeros((0,4)).cuda()]
 # labels = [torch.zeros(0,91).cuda(), torch.zeros(0,91).cuda()]
-
-# locs, confs = model(images)
+with torch.no_grad():
+    locs, confs = model(images)
 # loc_loss, conf_loss = criterion(locs, confs, bboxes, labels)
+
+from detect_utils import Detect
+detection = Detect(config)
+
+boxes = detection.forward(locs, confs, priors)
+print(boxes.shape)
+
+import pdb
+pdb.set_trace()
 
 # print(loc_loss, conf_loss)
 # loss = loc_loss + conf_loss
 
 # print(loss)
 
-i = 0
+# i = 0
 
-for imgs, bboxs, labels in (train_loader):
+# for imgs, bboxs, labels in (train_loader):
 
-    optimizer.zero_grad()
+#     optimizer.zero_grad()
 
-    imgs = imgs.to(device)
-    bboxs = [box.to(device) for box in bboxs]
-    labels = [label.to(device) for label in labels]
+#     imgs = imgs.to(device)
+#     bboxs = [box.to(device) for box in bboxs]
+#     labels = [label.to(device) for label in labels]
 
-    locs, confs = model(imgs)
+#     locs, confs = model(imgs)
 
-    loc_loss, conf_loss = criterion(locs, confs, bboxs, labels)
-    loss = loc_loss + conf_loss
-    loss.backward()
-    optimizer.step()
+#     loc_loss, conf_loss = criterion(locs, confs, bboxs, labels)
+#     loss = loc_loss + conf_loss
+#     loss.backward()
+#     optimizer.step()
 
-    if i % 10 == 0:
-        print(loss.item())
+#     if i % 10 == 0:
+#         print(loss.item())
     
-    i += 1
+#     i += 1
