@@ -1,47 +1,56 @@
 import torch
-from priorbox import PriorBox
 from model import SSD300
-from PIL import Image
 
-from box_utils import detect_objects
-
-# Set the device
-device = config['device']
-
-priors = PriorBox(config).create_priors().to(device)
-
-# Set up model
 model = SSD300()
 
-# Load model here if you want
-# torch.load('COCO-Resnet.pth')
+state_dict = torch.load('../COCO-resnet-2-COCO-version1-dev-val_loss-19.545.pth',map_location='cpu')
+model.load_state_dict(state_dict)
+model.eval()
 
-model = model.to(device)
+from PIL import Image,ImageDraw
 
-# Open the image
-img_path = 'test.jpg'
-original_image = Image.open(img_path, mode='r')
+original_image = Image.open('../val2017/000000001296.jpg', mode='r')
 original_image = original_image.convert('RGB')
 
-# Transform
+from utils import *
+from torchvision import transforms
+
+resize = transforms.Resize((300, 300))
+to_tensor = transforms.ToTensor()
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+
 image = normalize(to_tensor(resize(original_image)))
 
-# Move to default device
-image = image.to(device)
+with torch.no_grad():
+    predicted_locs, predicted_scores = model(image.unsqueeze(0))
 
-# Forward prop.
-predicted_locs, predicted_scores = model(image.unsqueeze(0))
+from box_utils import detect_objects
+from priorbox import PriorBox
+from config import config
+priors = PriorBox(config).forward()
 
-# Detect objects in SSD output
-pred_boxes, pred_labels, pred_scores = detect_objects(predicted_locs, predicted_scores, priors, min_score=0.01,
-                                                            max_overlap=0.45, top_k=200)
+det_boxes, det_labels, det_scores = detect_objects(predicted_locs, predicted_scores, priors,min_score=0.5,max_overlap=0.5,top_k=200)
 
 # Move detections to the CPU
-pred_boxes = pred_boxes[0].to('cpu')
+det_boxes = det_boxes[0]
 
 # Transform to original image dimensions
-original_dims = torch.FloatTensor([original_image.width, original_image.height, original_image.width, original_image.height]).unsqueeze(0)
-pred_boxes = pred_boxes * original_dims
+original_dims = torch.FloatTensor(
+    [original_image.width, original_image.height, original_image.width, original_image.height])
+det_boxes = det_boxes * original_dims
 
-# Now can plot det_boxes
-# Use det labels to know the class of the object
+annotated_image = original_image
+draw = ImageDraw.Draw(annotated_image)
+
+# Suppress specific classes, if needed
+for i in range(det_boxes.size(0)):
+
+    # Boxes
+    box_location = det_boxes[i].tolist()
+    draw.rectangle(xy=box_location, outline='red')
+
+del draw
+
+print("Saving Image as test.jpg")
+annotated_image.save(open('test.jpg','w'))
