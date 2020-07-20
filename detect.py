@@ -48,7 +48,7 @@ for i in range(det_boxes.size(0)):
 
     # Boxes
     box_location = det_boxes[i].tolist()
-    draw.rectangle(xy=box_location, outline='red')
+    draw.rectangle(xy=box_location, outline='red', width=2)
 
 del draw
 
