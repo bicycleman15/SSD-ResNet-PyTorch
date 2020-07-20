@@ -9,6 +9,7 @@ from model import SSD300
 from multibox import MultiBoxLoss
 
 from dataset import COCODataset
+from box_utils import predict_boxes
 
 # Set the device
 device = config['device']
@@ -80,7 +81,7 @@ def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, e
             # print stats
             stats = ' {}/{} Epochs | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(epoch_no,
                                                                                                        config['num_epochs'],
-                                                                                                       i+1,
+                                                                                                       i,
                                                                                                        len(train_loader),
                                                                                                        loss_c.item(),
                                                                                                        loss_l.item(),
@@ -130,7 +131,7 @@ def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, log_ev
             if i % log_every == 0:
                 # print stats
                 stats = 'Validating | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(
-                                                                                                        i+1,
+                                                                                                        i,
                                                                                                         len(val_loader),
                                                                                                         loss_c.item(),
                                                                                                         loss_l.item(),
@@ -186,6 +187,11 @@ def main():
 
         # do validation
         val_loss = val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, config['log_every_val'])
+
+        # Now find AP
+        pred_boxes, pred_scores, pred_labels, gt_boxes, gt_labels = predict_boxes(model, priors, val_loader)
+
+        # TODO : Find AP here now, and then add it to tensorboard
 
         epoch_end_time = time.time()
 

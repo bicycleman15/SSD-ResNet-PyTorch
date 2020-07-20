@@ -1,6 +1,7 @@
 import random
 import torch
 import torchvision.transforms.functional as FT
+from tqdm import tqdm
 
 # Image augmentations (basic version)
 
