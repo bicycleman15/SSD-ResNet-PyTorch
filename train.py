@@ -14,7 +14,7 @@ from box_utils import predict_boxes
 # Set the device
 device = config['device']
 
-priors = PriorBox(config).create_priors().to(device)
+priors = PriorBox(config).forward().to(device)
 
 # Set up model
 model = SSD300()
@@ -28,11 +28,11 @@ criterion = criterion.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr = config['lr'], weight_decay = config['weight_decay'])
 
 # Set up data train and val
-data_train = COCODataset('../val2017','../annotations/instances_val2017.json',split='TRAIN')
+data_train = COCODataset('dataset/train2017','dataset/annotations/instances_train2017.json',split='TRAIN')
 train_loader = torch.utils.data.DataLoader(data_train, batch_size=config['batch_size'], shuffle=True,
                                                collate_fn=data_train.collate_fn, num_workers=config['num_workers'])
 
-data_val = COCODataset('../val2017','../annotations/instances_val2017.json',split='TEST')
+data_val = COCODataset('dataset/val2017','dataset/annotations/instances_val2017.json',split='TEST')
 val_loader = torch.utils.data.DataLoader(data_val, batch_size=config['batch_size'], shuffle=False,
                                                collate_fn=data_val.collate_fn, num_workers=config['num_workers'])
 
@@ -189,7 +189,7 @@ def main():
         val_loss = val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, config['log_every_val'])
 
         # Now find AP
-        pred_boxes, pred_scores, pred_labels, gt_boxes, gt_labels = predict_boxes(model, priors, val_loader)
+        # pred_boxes, pred_scores, pred_labels, gt_boxes, gt_labels = predict_boxes(model, priors, val_loader)
 
         # TODO : Find AP here now, and then add it to tensorboard
 

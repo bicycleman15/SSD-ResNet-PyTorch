@@ -15,8 +15,8 @@ class COCODataset(Dataset):
 
 
     def __len__(self):
-        return len(self.coco)
-        # return 12
+        # return len(self.coco)
+        return 128
     
     def __getitem__(self,index):
         
