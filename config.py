@@ -4,7 +4,7 @@ config = {
     'device' : 'cuda:2',
     'name': 'COCO-testing-ep5', # experiment name
 
-    'num_workers' : 12,
+    'num_workers' : 8,
 
     # Prior Box features 
     'feature_maps': [38, 19, 10, 5, 3, 1],
