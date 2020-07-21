@@ -1,7 +1,7 @@
 config = {
     # Basic details
     'num_classes': 91,
-    'device' : 'cpu',
+    'device' : 'cuda:2',
     'name': 'COCO-version1-dev', # experiment name
 
     'num_workers' : 12,
@@ -16,7 +16,7 @@ config = {
     'variance': [0.1, 0.2],
 
     # Train features
-    'lr' : 1e-3,
+    'lr' : 2.6e-3,
     'batch_size' : 32,
     'weight_decay' : 0.0005,
     'num_epochs' : 10, # max epochs to train
@@ -24,7 +24,7 @@ config = {
     'log_every_val' : 500,
 
     'alpha' : 1.0,
-    'epochs_lr' : [2, 7, 30, 40], # epochs after which to change lr
+    'epochs_lr' : [5, 10, 15, 20], # epochs after which to change lr
     'gamma' : 0.5, # factor by which to change
     'save_model' : True,
     'save_model_epochs' : list(range(10)) # epochs after which to save model

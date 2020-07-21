@@ -197,7 +197,7 @@ def main():
         # TODO : Find AP here now, and then add it to tensorboard
 
         epoch_end_time = time.time()
-
+        writer.add_scalar("Learning Rate",get_lr(optimizer),epoch_no)
         print('Epoch took {:.3f} s.'.format(epoch_end_time - epoch_start_time))
         print('--' * 30)
 
