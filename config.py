@@ -19,7 +19,7 @@ config = {
     'lr' : 2.6e-3,
     'batch_size' : 32,
     'weight_decay' : 0.0005,
-    'num_epochs' : 10, # max epochs to train
+    'num_epochs' : 40, # max epochs to train
     'log_every_train' : 500, # how many batches after to print info regarding losses
     'log_every_val' : 500,
 
