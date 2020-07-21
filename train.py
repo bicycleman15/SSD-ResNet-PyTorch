@@ -102,7 +102,7 @@ def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, e
     writer.add_scalar('Train/avg conf_loss', conf_loss, epoch_no)
     writer.add_scalar('Train/avg total_loss', total_loss, epoch_no)
 
-def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, log_every = 50):
+def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, num_epochs,log_every = 50):
     """Validate the model for one complete epoch"""
     
     model.eval()
