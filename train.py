@@ -111,7 +111,8 @@ def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, log_ev
     total_loss = 0
 
     with torch.no_grad():
-        for i, data in enumerate(val_loader):
+        loop=tqdm(enumerate(train_loader),total=len(train_loader), leave=False)
+        for i, data in loop:
             images, bboxes, labels = data
 
             images = images.to(device)
@@ -128,18 +129,19 @@ def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, log_ev
             loss = config['alpha'] * loss_l + loss_c
 
             total_loss += loss.item()
-
-            if i % log_every == 0:
-                # print stats
-                stats = 'Validating | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(
-                                                                                                        i,
-                                                                                                        len(val_loader),
-                                                                                                        loss_c.item(),
-                                                                                                        loss_l.item(),
-                                                                                                        loss.item(),
-                                                                                                        get_lr(optimizer) 
-                                                                                                        )
-                print(stats)
+            loop.set_description(f"Training Epoch [{epoch_no}/{num_epochs}]")
+            loop.set_postfix(loss_c=loss_c.item() ,loss_l=loss_l.item(), loss=loss.item(), lr=get_lr(optimizer))
+            # if i % log_every == 0:
+            #     # print stats
+            #     stats = 'Validating | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(
+            #                                                                                             i,
+            #                                                                                             len(val_loader),
+            #                                                                                             loss_c.item(),
+            #                                                                                             loss_l.item(),
+            #                                                                                             loss.item(),
+            #                                                                                             get_lr(optimizer) 
+            #                                                                                             )
+            #     print(stats)
     
     # Take avg here
     conf_loss /= len(val_loader)
