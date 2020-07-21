@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from config import config
+from models.anchors.priorbox import PriorBox
 
-from box_utils import match, log_sum_exp
+from models.box_utils import match, log_sum_exp
 
 device = config['device']
 
@@ -30,14 +31,17 @@ class MultiBoxLoss(nn.Module):
         See: https://arxiv.org/pdf/1512.02325.pdf for more details.
     """
 
-    def __init__(self, priors, cfg, overlap_thresh = 0.5, neg_pos = 3):
+    def __init__(self, cfg, overlap_thresh = 0.5, neg_pos = 3):
         super(MultiBoxLoss, self).__init__()
 
         self.num_classes = cfg['num_classes']
         self.threshold = overlap_thresh
         self.negpos_ratio = neg_pos
         self.variance = cfg['variance']
-        self.priors = priors
+
+        # Generate and assign priors to buffer
+        priors = PriorBox(cfg).forward()
+        self.register_buffer('priors', priors)
 
     def forward(self, loc_data, conf_data, boxes, labels):
         """Multibox Loss
@@ -53,14 +57,14 @@ class MultiBoxLoss(nn.Module):
         priors = self.priors
         num = loc_data.size(0) # batch size
         num_priors = priors.size(0)
-        num_classes = self.num_classes
 
         # match priors (default boxes) and ground truth boxes
         loc_t = torch.zeros((num, num_priors, 4), dtype=torch.float, requires_grad=False)
         conf_t = torch.zeros((num, num_priors), dtype=torch.long, requires_grad=False)
 
-        loc_t = loc_t.to(device)
-        conf_t = conf_t.to(device)
+        # Should be on same device as priors
+        loc_t = loc_t.to(priors.device)
+        conf_t = conf_t.to(priors.device)
 
         for idx in range(num):
             loc_t[idx], conf_t[idx] = match(self.threshold, boxes[idx], priors, self.variance, labels[idx])

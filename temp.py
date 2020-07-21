@@ -75,7 +75,7 @@
 # #     i += 1
 
 from config import config
-from priorbox import PriorBox
+from models.anchors.priorbox import PriorBox
 priors = PriorBox(config).forward()
 
 # all_images_boxes, all_images_labels, all_images_scores = detect_objects(locs, confs, priors)

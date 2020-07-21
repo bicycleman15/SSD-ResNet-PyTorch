@@ -1,5 +1,4 @@
-import torch
-from model import SSD300
+from models.resnet50_backbone import SSD300
 
 model = SSD300()
 
@@ -8,13 +7,11 @@ print("Loading Model...")
 # model.load_state_dict(state_dict)
 model.eval()
 
-from PIL import Image
-
 from utils import *
 from torchvision import transforms
 
-from box_utils import detect_objects
-from priorbox import PriorBox
+from utils.box_utils import detect_objects
+from models.anchors.priorbox import PriorBox
 from config import config
 priors = PriorBox(config).forward()
 
