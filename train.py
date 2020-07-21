@@ -129,7 +129,7 @@ def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, num_ep
             loss = config['alpha'] * loss_l + loss_c
 
             total_loss += loss.item()
-            loop.set_description(f"Training Epoch [{epoch_no}/{num_epochs}]")
+            loop.set_description(f"Validation Epoch [{epoch_no}/{num_epochs}]")
             loop.set_postfix(loss_c=loss_c.item() ,loss_l=loss_l.item(), loss=loss.item(), lr=get_lr(optimizer))
             # if i % log_every == 0:
             #     # print stats
