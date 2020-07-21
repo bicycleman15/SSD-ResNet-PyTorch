@@ -49,7 +49,7 @@ def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, e
     loc_loss = 0
     conf_loss = 0
     total_loss = 0
-    loop=tqdm(enumerate(train_loader),total=len(train_loader), leave=False)
+    loop=tqdm(enumerate(train_loader),total=len(train_loader))
     for i, data in loop:
         images, bboxes, labels = data
 
@@ -111,7 +111,7 @@ def val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, log_ev
     total_loss = 0
 
     with torch.no_grad():
-        loop=tqdm(enumerate(train_loader),total=len(train_loader), leave=False)
+        loop=tqdm(enumerate(train_loader),total=len(train_loader))
         for i, data in loop:
             images, bboxes, labels = data
 
