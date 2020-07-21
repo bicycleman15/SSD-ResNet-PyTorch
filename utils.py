@@ -220,3 +220,27 @@ def transform(image, boxes, labels, split):
     # Normalize by mean and standard deviation of ImageNet data that our base VGG was trained on
     new_image = FT.normalize(new_image, mean=mean, std=std)
     return new_image, new_boxes, new_labels
+
+coco_class_name = ['__bg',
+                   'person', 'bicycle', 'car', 'motorcycle', 'airplane',
+                   'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+                   'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse',
+                   'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack',
+                   'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis',
+                   'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
+                   'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass',
+                   'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich',
+                   'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',
+                   'chair', 'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv',
+                   'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
+                   'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+                   'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+                   ]
+
+from vizer.draw import draw_boxes
+from PIL import Image
+def draw_boxes_(original_image, det_boxes, det_labels, det_scores):
+    """Wrapper for vizer.draw"""
+    img = draw_boxes(original_image, boxes=det_boxes, labels=det_labels, scores=det_scores, class_name_map=coco_class_name)
+    img = Image.fromarray(img)
+    return img
