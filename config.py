@@ -1,7 +1,7 @@
 config = {
     # Basic details
     'num_classes': 91,
-    'device' : 'cuda:2',
+    'device' : 'cuda:0',
     'name': 'COCO-testing-ep5', # experiment name
 
     'num_workers' : 8,
