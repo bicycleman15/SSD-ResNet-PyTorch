@@ -42,15 +42,15 @@ if not os.path.exists('weights'):
 
 from tqdm import tqdm
 
-def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, epoch_no, log_every = 50):
+def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, epoch_no, num_epochs,log_every = 50):
     """Train the model for one complete epoch"""
     
     model.train()
     loc_loss = 0
     conf_loss = 0
     total_loss = 0
-
-    for i, data in tqdm(enumerate(train_loader)):
+    loop=tqdm(enumerate(train_loader),total=len(train_loader), leave=False)
+    for i, data in loop:
         images, bboxes, labels = data
 
         images = images.to(device)
@@ -76,19 +76,20 @@ def train_one_epoch(model, criterion, optimizer, train_loader, writer, config, e
         writer.add_scalar('Train/loc_loss', loss_l.item(), epoch_no * len(train_loader) + i)
         writer.add_scalar('Train/conf_loss', loss_c.item(), epoch_no * len(train_loader) + i)
         writer.add_scalar('Train/total_loss', loss.item(), epoch_no * len(train_loader) + i)
-
-        if i % log_every == 0:
-            # print stats
-            stats = ' {}/{} Epochs | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(epoch_no,
-                                                                                                       config['num_epochs'],
-                                                                                                       i,
-                                                                                                       len(train_loader),
-                                                                                                       loss_c.item(),
-                                                                                                       loss_l.item(),
-                                                                                                       loss.item(),
-                                                                                                       get_lr(optimizer) 
-                                                                                                    )
-            print(stats)
+        loop.set_description(f"Training Epoch [{epoch_no}/{num_epochs}]")
+        loop.set_postfix(loss_c=loss_c.item() ,loss_l=loss_l.item(), loss=loss.item(), lr=get_lr(optimizer))
+        # if i % log_every == 0:
+        #     # print stats
+        #     stats = ' {}/{} Epochs | {}/{} batch | conf_loss: {:.5f} | loc_loss: {:.5f} | loss: {:.5f} | lr: {}'.format(epoch_no,
+        #                                                                                                config['num_epochs'],
+        #                                                                                                i,
+        #                                                                                                len(train_loader),
+        #                                                                                                loss_c.item(),
+        #                                                                                                loss_l.item(),
+        #                                                                                                loss.item(),
+        #                                                                                                get_lr(optimizer) 
+        #                                                                                             )
+        #     print(stats)
     
     # Take avg here
     conf_loss /= len(train_loader)
@@ -183,10 +184,10 @@ def main():
 
         epoch_start_time = time.time()
         # Train a epoch
-        train_one_epoch(model, criterion, optimizer, train_loader, writer, config, epoch_no, config['log_every_train'])
+        train_one_epoch(model, criterion, optimizer, train_loader, writer, config, epoch_no, num_epochs, config['log_every_train'])
 
         # do validation
-        val_loss = val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, config['log_every_val'])
+        val_loss = val_one_epoch(model, criterion, val_loader, writer, config, epoch_no, num_epochs, config['log_every_val'])
 
         # Now find AP
         # pred_boxes, pred_scores, pred_labels, gt_boxes, gt_labels = predict_boxes(model, priors, val_loader)
