@@ -1,8 +1,8 @@
 data:
-  train_data_path : '/home/jatin/Desktop/train2017'
-  train_annotate_path : '/home/jatin/Desktop/annotations/instances_train2017.json'
-  val_data_path : '/home/jatin/Desktop/val2017'
-  val_annotate_path : '/home/jatin/Desktop/annotations/instances_val2017.json'
+  train_data_path : 'dataset/train2017'
+  train_annotate_path : 'dataset/annotations/instances_train2017.json'
+  val_data_path : 'dataset/val2017'
+  val_annotate_path : 'dataset/annotations/instances_val2017.json'
 
 basic:
   num_classes: 91
