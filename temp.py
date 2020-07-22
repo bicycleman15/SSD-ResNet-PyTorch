@@ -1,86 +1,42 @@
-# from priorbox import PriorBox
-# from config import config
-# priors = PriorBox(cfg = config)
-# import torch
+from lightning.lightning_model import SSD300_COCO
+from omegaconf import OmegaConf
+import pytorch_lightning as pl
+from dataset_coco.dataset import COCODataset
+from models.detect_utils import filter_boxes_batched
+from models.box_utils import decode
+import torch.nn.functional as F
 
-# device = config['device']
+from lightning.utils import set_seed
 
-# priors = priors.create_priors()
-# priors = priors.to(device)
+if __name__ == '__main__':
+    # Set seed
+    set_seed()
 
-# from multibox import MultiBoxLoss
-# criterion = MultiBoxLoss(priors,config)
-# criterion = criterion.to(device)
+    # parse config
+    config = OmegaConf.load('config.yaml')
+    print(config.pretty())
 
-# from model import SSD300
+    print('Loading Model....')
+    model = SSD300_COCO(cfg=config)
+    model.eval()
 
-# model = SSD300()
-# model = model.to(device)
+    data = COCODataset(config.data.val_data_path, config.data.val_annotate_path, 'TEST')
+    print('data loaded')
+    print(len(data))
+    for x in data:
+        image, bboxes, labels = x
 
-# from dataset_coco import COCODataset
+        locs, confs = model(image.unsqueeze(0))
 
-# data = COCODataset('../val2017','../annotations/instances_val2017.json',split='TEST')
-# train_loader = torch.utils.data.DataLoader(data, batch_size=2, shuffle=True,
-#                                                collate_fn=data.collate_fn, num_workers=4)
+        for i in range(locs.size(0)):
+            locs[i] = decode(locs[i] , model.criterion.priors, config.priors.variance)
 
-# optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, weight_decay=0.1)
-
-# from tqdm import tqdm
-
-# images, bboxes, labels = next(iter(train_loader))
-
-
-# # print(len(bboxes))
-# # print(images.shape)
-
-# images = images.to(device)
-# bboxes = [x.cuda() for x in  bboxes] 
-# labels = [x.cuda() for x in labels]
-
-# # bboxes = [torch.zeros((0,4)).cuda(), torch.zeros((0,4)).cuda()]
-# # labels = [torch.zeros(0,91).cuda(), torch.zeros(0,91).cuda()]
-# with torch.no_grad():
-#     locs, confs = model(images)
-# # loc_loss, conf_loss = criterion(locs, confs, bboxes, labels)
-
-
-# import pdb
-# pdb.set_trace()
-
-# # print(loc_loss, conf_loss)
-# # loss = loc_loss + conf_loss
-
-# # print(loss)
-
-# # i = 0
-
-# # for imgs, bboxs, labels in (train_loader):
-
-# #     optimizer.zero_grad()
-
-# #     imgs = imgs.to(device)
-# #     bboxs = [box.to(device) for box in bboxs]
-# #     labels = [label.to(device) for label in labels]
-
-# #     locs, confs = model(imgs)
-
-# #     loc_loss, conf_loss = criterion(locs, confs, bboxs, labels)
-# #     loss = loc_loss + conf_loss
-# #     loss.backward()
-# #     optimizer.step()
-
-# #     if i % 10 == 0:
-# #         print(loss.item())
-    
-# #     i += 1
-
-from config import config
-from models.anchors.priorbox import PriorBox
-priors = PriorBox(config).forward()
-
-# all_images_boxes, all_images_labels, all_images_scores = detect_objects(locs, confs, priors)
-
-# print(all_images_boxes)
-# import pdb; pdb.set_trace()
-
-print(priors)
+        confs = F.softmax(confs, dim=2)
+        scores, idxs = confs.max(dim=2)
+        filtered_bboxes, filtered_confs, filtered_labels = filter_boxes_batched(locs, scores, idxs)
+        #
+        print(filtered_bboxes)
+        print(filtered_confs)
+        print(filtered_labels)
+        # print(len(filtered_labels))
+        break

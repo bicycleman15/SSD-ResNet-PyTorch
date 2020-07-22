@@ -3,6 +3,9 @@ from models.multibox import MultiBoxLoss
 import pytorch_lightning as pl
 import torch
 from dataset_coco.dataset import COCODataset
+from models.box_utils import decode
+from models.detect_utils import filter_boxes_batched
+import torch.nn.functional as F
 
 
 class SSD300_COCO(pl.LightningModule):
@@ -79,13 +82,24 @@ class SSD300_COCO(pl.LightningModule):
         loc_loss, conf_loss = self.criterion(locs, confs, bboxes, bbox_labels)
         loss = conf_loss + self.cfg.train.alpha * loc_loss
 
-        # Decode targets here if possible
-        # dec_bboxs = decode(bboxes, locs, self.criterion.priors)
+        for i in range(locs.size(0)):
+            # Decode targets here if possible
+            locs[i] = decode(locs[i], self.criterion.priors, self.cfg.priors.variance)
 
-        return {'loc_loss': loc_loss, 'conf_loss': conf_loss, 'loss': loss}
+        confs = F.softmax(confs, dim=2)
+        scores, idxs = confs.max(dim=2)
+
+        triplet_of_preds = filter_boxes_batched(locs, scores, idxs)
+        # triplet of preds contains (predbboxes, predscores, predlabels)
+        # where predbboxes is a list of size locs.size(0) or batch_size
+        # each item of list is a tensor of filtered bboxes tensor in xy coords
+
+        # predictions and gts will be used in validation end function to calculate APs
+
+        return {'loc_loss': loc_loss, 'conf_loss': conf_loss, 'loss': loss, 'predictions' : triplet_of_preds, 'gt' : (bboxes, bbox_labels)}
 
     def validation_epoch_end(self, outputs):
-        # TODO : also collect decoded boxes here to calc mAP and stuff
+        # TODO : also collect decoded boxes here to calc mAP and stuff (done)
         # Think of a cleaner way to take average
         conf_loss = sum([x['conf_loss'] for x in outputs])
         loc_loss = sum([x['loc_loss'] for x in outputs])
@@ -95,8 +109,28 @@ class SSD300_COCO(pl.LightningModule):
         loc_loss /= len(outputs)
         loss /= len(outputs)
 
+        pred_boxes = []
+        pred_scores = []
+        pred_labels = []
+        gt_boxes = []
+        gt_labels = []
+
+        # Now collect all the item in respective lists
+        for x in outputs:
+            pred_boxes.extend(x['predictions'][0])
+            pred_scores.extend(x['predictions'][1])
+            pred_labels.extend(x['predictions'][2])
+
+            gt_boxes.extend(x['gt'][0])
+            gt_labels.extend(x['gt'][1])
+
+        # incorporate background class by adding +1
+        gt_labels = [x+1 for x in gt_labels]
+
+        # now find mAP here...
+
         # Save model right here now, to save space
         # torch.save(self.feature_extractor.state_dict(), '{}/resnet-ssd-coco-{}'.format(self.cfg.train.model_save_path,loss))
-
+        # print(pred_boxes[0].shape, gt_boxes[0].shape)
         # dont return here anything, instead do your own eval
         return {'val_loss': loss, 'log': {'val_loss': loss}, 'progress_bar': {'avg_val_loss': loss}}

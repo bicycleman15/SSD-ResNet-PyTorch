@@ -36,7 +36,9 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         checkpoint_callback=save_checkpoint,
         callbacks=[lr_logger],
-        gpus=1
+        gpus=1,
+        train_percent_check=0.01,
+        val_percent_check=0.01
     )
 
     trainer.fit(model)
