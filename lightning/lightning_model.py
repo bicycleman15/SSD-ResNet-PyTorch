@@ -20,7 +20,7 @@ class SSD300_COCO(pl.LightningModule):
         return locs, confs
 
     def prepare_data(self):  # TODO : fix here train
-        self.train_data = COCODataset(self.cfg.data.val_data_path, self.cfg.data.val_annotate_path, 'TRAIN')
+        self.train_data = COCODataset(self.cfg.data.train_data_path, self.cfg.data.train_annotate_path, 'TRAIN')
         self.val_data = COCODataset(self.cfg.data.val_data_path, self.cfg.data.val_annotate_path, 'TEST')
 
     def train_dataloader(self):
