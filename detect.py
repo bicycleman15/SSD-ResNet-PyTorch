@@ -7,10 +7,10 @@ print("Loading Model...")
 # model.load_state_dict(state_dict)
 model.eval()
 
-from dataset.utils import *
+from dataset_coco.utils import *
 from torchvision import transforms
 
-from dataset.utils import detect_objects
+from dataset_coco.utils import detect_objects
 from models.anchors.priorbox import PriorBox
 from config import config
 priors = PriorBox(config).forward()

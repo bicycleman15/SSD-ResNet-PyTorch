@@ -17,7 +17,7 @@
 # model = SSD300()
 # model = model.to(device)
 
-# from dataset import COCODataset
+# from dataset_coco import COCODataset
 
 # data = COCODataset('../val2017','../annotations/instances_val2017.json',split='TEST')
 # train_loader = torch.utils.data.DataLoader(data, batch_size=2, shuffle=True,

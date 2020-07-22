@@ -2,7 +2,7 @@ from models.resnet50_backbone import SSD300
 from models.multibox import MultiBoxLoss
 import pytorch_lightning as pl
 import torch
-from dataset.dataset import COCODataset
+from dataset_coco.dataset import COCODataset
 
 
 class SSD300_COCO(pl.LightningModule):
