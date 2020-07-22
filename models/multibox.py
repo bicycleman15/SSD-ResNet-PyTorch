@@ -1,12 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from config import config
 from models.anchors.priorbox import PriorBox
 
 from models.box_utils import match, log_sum_exp
-
-device = config['device']
 
 class MultiBoxLoss(nn.Module):
     """SSD Weighted Loss Function
@@ -34,10 +31,10 @@ class MultiBoxLoss(nn.Module):
     def __init__(self, cfg, overlap_thresh = 0.5, neg_pos = 3):
         super(MultiBoxLoss, self).__init__()
 
-        self.num_classes = cfg['num_classes']
+        self.num_classes = cfg.basic.num_classes
         self.threshold = overlap_thresh
         self.negpos_ratio = neg_pos
-        self.variance = cfg['variance']
+        self.variance = cfg.priors.variance
 
         # Generate and assign priors to buffer
         priors = PriorBox(cfg).forward()

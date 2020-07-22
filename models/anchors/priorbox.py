@@ -10,18 +10,15 @@ class PriorBox(object):
     """
     def __init__(self, cfg):
         super(PriorBox, self).__init__()
-
-        self.image_size = cfg['image_size']
-
+        self.image_size = cfg.priors.image_size
         # number of priors for feature map location (either 4 or 6)
-        self.num_priors = len(cfg['aspect_ratios'])
-
-        self.variance = cfg['variance']
-        self.feature_maps = cfg['feature_maps']
-        self.min_sizes = cfg['min_sizes']
-        self.max_sizes = cfg['max_sizes']
-        self.steps = cfg['steps']
-        self.aspect_ratios = cfg['aspect_ratios']
+        self.num_priors = len(cfg.priors.aspect_ratios)
+        self.variance = cfg.priors.variance
+        self.feature_maps = cfg.priors.feature_maps
+        self.min_sizes = cfg.priors.min_sizes
+        self.max_sizes = cfg.priors.max_sizes
+        self.steps = cfg.priors.steps
+        self.aspect_ratios = cfg.priors.aspect_ratios
         
     def forward(self):
         mean = []

@@ -1,28 +1,43 @@
 from lightning.lightning_model import SSD300_COCO
-import torch
 from omegaconf import OmegaConf
 import pytorch_lightning as pl
 
+from lightning.utils import set_seed
+import argparse
 
-# TODO :- remove config and replace with cfg yaml file
-# TODO :- make train working with scheduler and everything, logs too
-# TODO :- see saving model to take up less space
-# TODO :- make inference.py file/functions so that can work with it in validation_end() func, and calc AP
+# TODO :- remove config and replace with cfg yaml file (done)
+# TODO :- make train working with scheduler and everything, logs too (done)
+# TODO :- see saving model to take up less space (done)
+# TODO :- make inference.py file/functions so that can work with it in validation_end() func, and calc AP (remaining)
 
 if __name__ == '__main__':
-    config = OmegaConf.load('config.yaml')
-    model = SSD300_COCO(cfg=config)
+    # Set seed
+    set_seed()
 
+    # parse config
+    config = OmegaConf.load('config.yaml')
     print(config.pretty())
 
-    trainer = pl.Trainer(train_percent_check=0.001, val_percent_check=0.001)
-    trainer.fit(model)
+    print('Loading Model....')
+    model = SSD300_COCO(cfg=config)
 
-    # data = COCODataset(config.train.train_data_path, config.train.train_annotate_path, 'TEST')
-    # print(config.train.train_data_path)
-    # if os.path.isfile(config.train.train_annotate_path):
-    #     print('Yes')
-    # for x in data:
-    #     print(x)
-    #     break
+    # TODO : add gpus
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('gpus', default=1)
+
+    # Create model save checkpoint
+    save_checkpoint = pl.callbacks.ModelCheckpoint(
+        monitor='val_loss',
+        save_top_k=5,
+        save_weights_only=True
+    )
+    lr_logger = pl.callbacks.LearningRateLogger()
+
+    trainer = pl.Trainer(
+        checkpoint_callback=save_checkpoint,
+        callbacks=[lr_logger],
+        gpus=1
+    )
+
+    trainer.fit(model)
 
