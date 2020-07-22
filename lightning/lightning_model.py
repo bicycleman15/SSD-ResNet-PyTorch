@@ -10,6 +10,7 @@ class SSD300_COCO(pl.LightningModule):
     def __init__(self,cfg):
         super(SSD300_COCO, self).__init__()
         self.cfg = cfg
+        self.hparams = cfg.train
         self.feature_extractor = SSD300()
         self.criterion = MultiBoxLoss(cfg=config)
 
@@ -18,15 +19,15 @@ class SSD300_COCO(pl.LightningModule):
         locs, confs = self.feature_extractor(images)
         return locs, confs
 
-    def prepare_data(self):
-        self.train_data = COCODataset(self.cfg.train_data_path, self.cfg.train_annotate_path, 'TRAIN')
-        self.val_data = COCODataset(self.cfg.val_data_path, self.cfg.val_annotate_path, 'TEST')
+    def prepare_data(self): # TODO : fix here train
+        self.train_data = COCODataset(self.cfg.data.val_data_path, self.cfg.data.val_annotate_path, 'TEST')
+        self.val_data = COCODataset(self.cfg.data.val_data_path, self.cfg.data.val_annotate_path, 'TEST')
 
     def train_dataloader(self):
         train_loader = torch.utils.data.DataLoader(
             self.train_data,
-            batch_size=self.cfg.data.batch_size,
-            num_workers=self.cfg.data.num_workers,
+            batch_size=self.cfg.train.batch_size,
+            num_workers=self.cfg.train.num_workers,
             shuffle=True,
             collate_fn=self.train_data.collate_fn
         )
@@ -35,8 +36,8 @@ class SSD300_COCO(pl.LightningModule):
     def val_dataloader(self):
         valid_loader = torch.utils.data.DataLoader(
             self.val_data,
-            batch_size=self.cfg.data.batch_size,
-            num_workers=self.cfg.data.num_workers,
+            batch_size=self.cfg.train.batch_size,
+            num_workers=self.cfg.train.num_workers,
             shuffle=False,
             collate_fn=self.val_data.collate_fn,
         )
@@ -64,8 +65,38 @@ class SSD300_COCO(pl.LightningModule):
         locs, confs = self(images)
 
         # calc loss
-        loc_loss, conf_loss = self.criterion.forward(locs, confs, bboxes, bbox_labels)
+        loc_loss, conf_loss = self.criterion(locs, confs, bboxes, bbox_labels)
         loss = conf_loss + self.cfg.train.alpha * loc_loss
 
-        loss_dict = {'conf_loss':conf_loss, 'loc_loss':loc_loss}
-        return {'loss':loss, 'logs':loss_dict, 'progress_bar':loss_dict}
+        loss_dict = {'conf_l':conf_loss, 'loc_l':loc_loss}
+        return {'loss':loss, 'log':loss_dict, 'progress_bar':loss_dict}
+
+    def validation_step(self, batch, batch_idx):
+        images, bboxes, bbox_labels = batch
+        locs, confs = self(images)
+
+        # calc loss
+        loc_loss, conf_loss = self.criterion(locs, confs, bboxes, bbox_labels)
+        loss = conf_loss + self.cfg.train.alpha * loc_loss
+
+        # Decode targets here if possible
+        # dec_bboxs = decode(bboxes, locs, self.criterion.priors)
+
+        return {'loc_loss':loc_loss, 'conf_loss':conf_loss, 'loss':loss}
+
+    def validation_epoch_end(self, outputs):
+        # TODO : also collect decoded boxes here to calc mAP and stuff
+        # Think of a cleaner way to take average
+        conf_loss = sum([x['conf_loss'] for x in outputs])
+        loc_loss = sum([x['loc_loss'] for x in outputs])
+        loss = sum([x['loss'] for x in outputs])
+
+        conf_loss /= len(outputs)
+        loc_loss /= len(outputs)
+        loss /= len(outputs)
+
+        # Save model right here now, to save space
+        # torch.save(self.feature_extractor.state_dict(), '{}/resnet-ssd-coco-{}'.format(self.cfg.train.model_save_path,loss))
+
+        # dont return here anything, instead do your own eval
+        return {'val_loss' : loss, 'log' : {'val_loss' : loss}}
