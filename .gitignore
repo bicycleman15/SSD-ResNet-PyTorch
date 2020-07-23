@@ -134,5 +134,5 @@ dataset/
 weights/
 runs/
 oldruns/
-
+default/
 .idea/
