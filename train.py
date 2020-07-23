@@ -3,7 +3,7 @@ from omegaconf import OmegaConf
 import pytorch_lightning as pl
 from lightning.utils import set_seed
 import argparse
-
+from pytorch_lightning.loggers import TensorBoardLogger
 # TODO : add gpus
 parser = argparse.ArgumentParser(description='Lightning SSD Training')
 parser.add_argument('--gpus', default='0', 
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     model = SSD300_COCO(cfg=config)
 
     
-    
+    logger=TensorBoardLogger(save_dir="runs")
     # Create model save checkpoint
     save_checkpoint = pl.callbacks.ModelCheckpoint(
         monitor='val_loss',
@@ -51,7 +51,8 @@ if __name__ == '__main__':
             gpus=gpu_list,
             train_percent_check=0.01,
             val_percent_check=0.01,
-            distributed_backend='ddp'
+            distributed_backend='ddp',
+            logger=logger
         )
     else:
         trainer = pl.Trainer(
@@ -60,6 +61,7 @@ if __name__ == '__main__':
             gpus=gpu_list,
             train_percent_check=0.01,
             val_percent_check=0.01,
+            logger=logger
         )
 
 

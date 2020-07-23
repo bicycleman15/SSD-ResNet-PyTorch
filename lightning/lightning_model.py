@@ -6,6 +6,8 @@ from dataset_coco.dataset import COCODataset
 from models.box_utils import decode
 from models.detect_utils import filter_boxes_batched
 import torch.nn.functional as F
+from models.map_utils import mapCalc
+import os
 
 
 class SSD300_COCO(pl.LightningModule):
@@ -126,8 +128,20 @@ class SSD300_COCO(pl.LightningModule):
 
         # incorporate background class by adding +1
         gt_labels = [x+1 for x in gt_labels]
+        
+        aps = mapCalc(pred_boxes,pred_scores,pred_labels,gt_boxes,gt_labels,self.cfg.basic.num_classes)
+        
+        c=1
+        text=""
+        while( c < self.cfg.basic.num_classes):
+            self.logger.experiment.add_scalar(f"APs/Class :{c}", aps[c],self.current_epoch)
+            text+=('Class : {} | AP : {} \n'.format(c,aps[c]))
+            c+=1
+        # Add in text form
+ 
+        self.logger.experiment.add_text("AP Summary", text ,self.current_epoch)
+        
 
-        # now find mAP here...
 
         # Save model right here now, to save space
         # torch.save(self.feature_extractor.state_dict(), '{}/resnet-ssd-coco-{}'.format(self.cfg.train.model_save_path,loss))

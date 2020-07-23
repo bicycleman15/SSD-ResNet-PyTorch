@@ -27,7 +27,7 @@ class COCODataset(Dataset):
             bboxs = np.zeros((0,4))
         else:
             # bbox are stored as x,y,w,h
-            bboxs = np.array(bboxs)
+            bboxs = np.array(bboxs).reshape(-1,4)
 
         # convert to x1,y1,x2,y2 coordinate form also called as boundary form
         # this is done because the transforms are made in accordance to the boundary
