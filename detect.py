@@ -11,9 +11,10 @@ import torch.nn.functional as F
 from vizer.draw import draw_boxes
 
 from dataset_coco.utils import coco_class_name
+from dataset_coco.dataset import COCODataset
 
 
-def detect_objects_and_plot(img: 'PIL Image', model, threshold=0.7):
+def detect_objects_and_plot(img: 'PIL Image', model, threshold=0.3):
     """ Takes in an PIL image and model, run it on the image and returns an annotated PIL image. Also
     takes in conf threshold above which to consider valid prediction.
     """
@@ -59,13 +60,21 @@ if __name__ == '__main__':
     config = OmegaConf.load('config.yaml')
     #
     # # init model first
-    model = SSD300_COCO(cfg=config)
+    # model = SSD300_COCO(cfg=config)
 
-    state_dict = torch.load('../epoch=15.ckpt', map_location='cpu')
-    model.load_state_dict(state_dict['state_dict'])
+    data_train = COCODataset(config.data.val_data_path, config.data.val_annotate_path,'TEST')
 
-    img_raw = Image.open('../val2017/000000085772.jpg', mode='r').convert('RGB')
+    for img, bboxes, labels in data_train:
+        print(img.shape)
+        print(bboxes)
+        print(labels)
+        break
+
+    # state_dict = torch.load('../epoch=24.ckpt', map_location='cpu')
+    # model.load_state_dict(state_dict['state_dict'])
     #
-    ann_image = detect_objects_and_plot(img_raw, model)
-    print("Saving Image as test.jpg")
-    ann_image.save(open('test.jpg', 'w'))
+    # img_raw = Image.open('../val2017/000000001503.jpg', mode='r').convert('RGB')
+    #
+    # ann_image = detect_objects_and_plot(img_raw, model)
+    # print("Saving Image as test.jpg")
+    # ann_image.save(open('test.jpg', 'w'))
