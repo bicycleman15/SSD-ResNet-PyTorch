@@ -1,7 +1,7 @@
 import random
 import torch
 import torchvision.transforms.functional as FT
-from tqdm import tqdm
+from models.box_utils import jaccard
 
 # Image augmentations (basic version)
 
@@ -199,20 +199,21 @@ def transform(image, boxes, labels, split):
     # Skip the following operations for evaluation/testing
     if split == 'TRAIN':
         # A series of photometric distortions in random order, each with 50% chance of occurrence, as in Caffe repo
-        # new_image = photometric_distort(new_image)
+        new_image = photometric_distort(new_image)
         # Convert PIL image to Torch tensor
         new_image = FT.to_tensor(new_image)
         # Expand image (zoom out) with a 50% chance - helpful for training detection of small objects
         # Fill surrounding space with the mean of ImageNet data that our base VGG was trained on
-        # if random.random() < 0.5:
-            # new_image, new_boxes = expand(new_image, boxes, filler=mean)
+        if random.random() < 0.5:
+            new_image, new_boxes = expand(new_image, boxes, filler=mean)
         # Randomly crop image (zoom in)
-        # new_image, new_boxes, new_labels= random_crop(new_image, new_boxes, new_labels)
+        if(len(labels)>0):
+            new_image, new_boxes, new_labels= random_crop(new_image, new_boxes, new_labels)
         # Convert Torch tensor to PIL image
         new_image = FT.to_pil_image(new_image)
         # Flip image with a 50% chance
-        # if random.random() < 0.5:
-            # new_image, new_boxes = flip(new_image, new_boxes)
+        if random.random() < 0.5:
+            new_image, new_boxes = flip(new_image, new_boxes)
     # Resize image to (300, 300) - this also converts absolute boundary coordinates to their fractional form
     new_image, new_boxes = resize(new_image, new_boxes, dims=(300, 300))
     # Convert PIL image to Torch tensor
@@ -234,13 +235,14 @@ coco_class_name = ['__bg',
                    'chair', 'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv',
                    'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
                    'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
-                   'scissors', 'teddy bear', 'hair drier', 'toothbrush'
+                   'scissors', 'teddy bear', 'hair drier', 'toothbrush', '','','','','','',
+                    '','','','',''
                    ]
-
-from vizer.draw import draw_boxes
-from PIL import Image
-def draw_boxes_(original_image, det_boxes, det_labels, det_scores):
-    """Wrapper for vizer.draw"""
-    img = draw_boxes(original_image, boxes=det_boxes, labels=det_labels, scores=det_scores, class_name_map=coco_class_name)
-    img = Image.fromarray(img)
-    return img
+#
+# from vizer.draw import draw_boxes
+# from PIL import Image
+# def draw_boxes_(original_image, det_boxes, det_labels, det_scores):
+#     """Wrapper for vizer.draw"""
+#     img = draw_boxes(original_image, boxes=det_boxes, labels=det_labels, scores=det_scores, class_name_map=coco_class_name)
+#     img = Image.fromarray(img)
+#     return img

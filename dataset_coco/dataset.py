@@ -1,9 +1,8 @@
-import torch
 from torch.utils.data import Dataset
 import torchvision.datasets as dataset
-import torchvision.transforms.functional as FT
+import torch
 import numpy as np
-from utils import *
+from dataset_coco.utils import transform
 
 class COCODataset(Dataset):
     
@@ -21,17 +20,14 @@ class COCODataset(Dataset):
     def __getitem__(self,index):
         
         img, label = self.coco[index]
-
         # TODO check if he image is really image or just an image path
-
-        
         bboxs = [x['bbox'] for x in label]
 
         if len(bboxs) == 0:
             bboxs = np.zeros((0,4))
         else:
             # bbox are stored as x,y,w,h
-            bboxs = np.array(bboxs)
+            bboxs = np.array(bboxs).reshape(-1,4)
 
         # convert to x1,y1,x2,y2 coordinate form also called as boundary form
         # this is done because the transforms are made in accordance to the boundary
@@ -66,5 +62,4 @@ class COCODataset(Dataset):
             labels.append(b[2])
         
         images = torch.stack(images,dim = 0)
-        
         return images, boxes, labels
