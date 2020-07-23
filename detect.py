@@ -1,61 +1,80 @@
-from models.resnet50_backbone import SSD300
+from lightning.lightning_model import SSD300_COCO
+import torch
+from PIL import Image
 
-model = SSD300()
-
-print("Loading Model...")
-# state_dict = torch.load('../COCO-resnet-2-COCO-version1-dev-val_loss-19.545.pth',map_location='cpu')
-# model.load_state_dict(state_dict)
-model.eval()
-
-from dataset_coco.utils import *
 from torchvision import transforms
+from models.box_utils import decode
+from models.detect_utils import filter_boxes_batched
 
-from dataset_coco.utils import detect_objects
-from models.anchors.priorbox import PriorBox
-from config import config
-priors = PriorBox(config).forward()
+from omegaconf import OmegaConf
+import torch.nn.functional as F
+from vizer.draw import draw_boxes
 
-def detect_objects_and_plot(original_image : 'PIL Image', model, priors, threshold = 0.5):
-    """ Takes in an PIL image and model, run it on the image and returns an annotated PIL image. Also 
+from dataset_coco.utils import coco_class_name
+from dataset_coco.dataset import COCODataset
+
+
+def detect_objects_and_plot(img: 'PIL Image', model, threshold=0.3):
+    """ Takes in an PIL image and model, run it on the image and returns an annotated PIL image. Also
     takes in conf threshold above which to consider valid prediction.
     """
     # some transorms
     resize = transforms.Resize((300, 300))
     to_tensor = transforms.ToTensor()
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                    std=[0.229, 0.224, 0.225])
-    image = normalize(to_tensor(resize(original_image)))
+                                     std=[0.229, 0.224, 0.225])
+
+    image = normalize(to_tensor(resize(img)))
+
     model.eval()
-    image = image.unsqueeze(0)
     with torch.no_grad():
-        predicted_locs, predicted_scores = model(image)
-    det_boxes, det_labels, det_scores = detect_objects(predicted_locs, predicted_scores, priors, min_score=0.05,max_overlap=0.45,top_k=200)
-    
-    # Move detections to the CPU
-    det_boxes = det_boxes[0]
+        locs, confs = model(image.unsqueeze(0))
+
+    for i in range(locs.size(0)):
+        # Decode targets here if possible
+        locs[i] = decode(locs[i], model.criterion.priors, model.cfg.priors.variance)
+
+    confs = F.softmax(confs, dim=2)
+    scores, idxs = confs.max(dim=2)
+
+    bboxes, scores, labels = filter_boxes_batched(locs, scores, idxs, min_conf=threshold, nms_thresh=0.1)
+
+    # since there is only a single image
+    bboxes = bboxes[0]
+    scores = scores[0]
+    labels = labels[0]
 
     # Transform to original image dimensions
-    original_dims = torch.FloatTensor(
-        [original_image.width, original_image.height, original_image.width, original_image.height])
-    det_boxes = det_boxes * original_dims
+    dims = torch.FloatTensor([img.width, img.height, img.width, img.height])
+    bboxes = bboxes * dims
 
-    det_labels = det_labels[0]
-    det_scores = det_scores[0]
-
-    mask = det_scores > threshold
-
-    det_boxes = det_boxes[mask]
-    det_scores = det_scores[mask]
-    det_labels = det_labels[mask]
-
-    annotated_image = draw_boxes_(original_image, det_boxes, det_labels, det_scores)
-
+    annotated_image = draw_boxes(img, bboxes, labels, scores, class_name_map=coco_class_name)
+    annotated_image = Image.fromarray(annotated_image)
     return annotated_image
 
-
 if __name__ == '__main__':
-    original_image = Image.open('../val2017/000000001296.jpg', mode='r')
-    original_image = original_image.convert('RGB')
-    annotated_image = detect_objects_and_plot(original_image, model, priors)
-    print("Saving Image as test.jpg")
-    annotated_image.save(open('test.jpg','w'))
+    # Set seed
+    # set_seed()
+    #
+    # # parse config
+    config = OmegaConf.load('config.yaml')
+    #
+    # # init model first
+    # model = SSD300_COCO(cfg=config)
+
+    data_train = COCODataset(config.data.val_data_path, config.data.val_annotate_path,'TEST')
+
+    for img, bboxes, labels in data_train:
+        print(img.shape)
+        print(bboxes)
+        print(labels)
+        break
+
+    # state_dict = torch.load('../epoch=24.ckpt', map_location='cpu')
+    # model.load_state_dict(state_dict['state_dict'])
+    #
+    # img_raw = Image.open('../val2017/000000001503.jpg', mode='r').convert('RGB')
+    #
+    # ann_image = detect_objects_and_plot(img_raw, model)
+    # print("Saving Image as test.jpg")
+    # ann_image.save(open('test.jpg', 'w'))
