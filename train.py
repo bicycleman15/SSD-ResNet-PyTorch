@@ -5,9 +5,7 @@ import pytorch_lightning as pl
 from lightning.utils import set_seed
 import argparse
 
-# TODO :- remove config and replace with cfg yaml file (done)
-# TODO :- make train working with scheduler and everything, logs too (done)
-# TODO :- see saving model to take up less space (done)
+
 # TODO :- make inference.py file/functions so that can work with it in validation_end() func, and calc AP (remaining)
 
 if __name__ == '__main__':
