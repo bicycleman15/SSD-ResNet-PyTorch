@@ -1,0 +1,29 @@
+data:
+  train_data_path : 'dataset/train2017'
+  train_annotate_path : 'dataset/annotations/instances_train2017.json'
+  val_data_path : 'dataset/val2017'
+  val_annotate_path : 'dataset/annotations/instances_val2017.json'
+
+basic:
+  num_classes: 91
+
+train:
+  batch_size: 32
+  num_workers: 8
+  lr: 2.6e-3
+  momentum: 0.9
+  weight_decay: 0.001
+  step_size: 10
+  gamma: 0.1
+
+  alpha: 1.0
+  exp_name : 'COCO-train'
+
+priors:
+  feature_maps: [38, 19, 10, 5, 3, 1]
+  image_size: 300
+  steps: [8, 16, 32, 64, 100, 300]
+  min_sizes: [21, 45, 99, 153, 207, 261]
+  max_sizes: [45, 99, 153, 207, 261, 315]
+  aspect_ratios: [[2], [2, 3], [2, 3], [2, 3], [2], [2]]
+  variance: [0.1, 0.2]
